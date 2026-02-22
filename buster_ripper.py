@@ -134,8 +134,8 @@ log = logging.getLogger("buster-ripper")
 _kv_cache_usage: float = 0.0  # 0.0–1.0, EMA-smoothed server-wide value
 
 # Matches vLLM Prometheus metric lines, e.g.:
-#   vllm:gpu_cache_usage_perc{...} 0.714
-_KV_METRIC_RE = re.compile(r'^vllm:gpu_cache_usage_perc\b[^\n]*\s+([\d.]+)', re.MULTILINE)
+#   vllm:kv_cache_usage_perc{engine="0",...} 0.714
+_KV_METRIC_RE = re.compile(r'^vllm:kv_cache_usage_perc\b[^\n]*\s+([\d.]+)', re.MULTILINE)
 
 # EMA alpha for KV cache smoothing. vLLM reports per-interval averages that can
 # bounce (75% → 0% → 23%) when the idle interval resets the counter. α=0.3
@@ -144,12 +144,7 @@ _KV_EMA_ALPHA: float = 0.3
 
 
 async def _poll_kv_cache() -> None:
-    """Background task: poll vLLM /metrics every KV_POLL_INTERVAL seconds.
-
-    With TP>1 vLLM emits one metric line per engine/GPU shard. We take the
-    max across all shards (most-loaded GPU) rather than the first match, which
-    avoids the 75% → 0% → 23% interleaving caused by per-shard ordering.
-    """
+    """Background task: poll vLLM /metrics every KV_POLL_INTERVAL seconds."""
     global _kv_cache_usage
     first = True
     while True:
@@ -157,19 +152,15 @@ async def _poll_kv_cache() -> None:
             async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(f"{UPSTREAM}/metrics")
             if resp.status_code == 200:
-                values = [float(m) for m in _KV_METRIC_RE.findall(resp.text)]
-                if values:
-                    raw = max(values)
+                m = _KV_METRIC_RE.search(resp.text)
+                if m:
+                    raw = float(m.group(1))
                     if first:
                         _kv_cache_usage = raw
                         first = False
                     else:
                         _kv_cache_usage = (1 - _KV_EMA_ALPHA) * _kv_cache_usage + _KV_EMA_ALPHA * raw
-                    log.debug(
-                        "kv_cache_usage=%.1f%% (raw_max=%.1f%%, shards=%s)",
-                        _kv_cache_usage * 100, raw * 100,
-                        [f"{v*100:.0f}%" for v in values],
-                    )
+                    log.debug("kv_cache_usage=%.1f%% (raw=%.1f%%)", _kv_cache_usage * 100, raw * 100)
         except Exception:
             pass  # upstream may be starting up; ignore silently
         await asyncio.sleep(KV_POLL_INTERVAL)
