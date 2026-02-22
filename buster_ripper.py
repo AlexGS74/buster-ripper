@@ -620,8 +620,9 @@ async def count_tokens(request: Request) -> Response:
       - If both token fill AND average TTFT exceed their thresholds, inflate
         the reported count to COMPACT_NUDGE_RATIO × MAX_MODEL_LEN, which is
         above Claude Code's compaction threshold and triggers a context reset.
-      - If we have no stats yet (first turn), forward to upstream; if that
-        also fails (404), fall back to a character-count estimate.
+      - If we have no stats yet (first turn), fall back to a character-count
+        estimate. vLLM always returns 404 for this endpoint so forwarding
+        upstream is pointless.
     """
     raw_body = await request.body()
     try:
@@ -635,24 +636,11 @@ async def count_tokens(request: Request) -> Response:
     if stats and stats.input_tokens > 0:
         real_tokens = stats.input_tokens
     else:
-        # No tracked data yet — try forwarding to upstream
-        fwd_headers = _forward_headers(request)
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{UPSTREAM}/v1/messages/count_tokens",
-                content=raw_body,
-                headers=fwd_headers,
-                params=dict(request.query_params),
-            )
-        if resp.status_code == 200:
-            return Response(
-                content=resp.content,
-                status_code=resp.status_code,
-                headers=_response_headers(resp.headers),
-            )
-        # Upstream also failed (404 from vLLM) — estimate from body size
+        # No stats yet (first turn) — estimate from body size.
+        # vLLM always returns 404 for this endpoint so there's no point
+        # forwarding upstream; just estimate and respond immediately.
         real_tokens = _estimate_tokens(body)
-        log.debug("session %s: count_tokens fallback estimate=%d", sid, real_tokens)
+        log.debug("session %s: count_tokens no-stats estimate=%d", sid, real_tokens)
 
     # Apply compaction nudge if both thresholds are exceeded
     if stats and should_nudge_compact(
