@@ -144,7 +144,12 @@ _KV_EMA_ALPHA: float = 0.3
 
 
 async def _poll_kv_cache() -> None:
-    """Background task: poll vLLM /metrics every KV_POLL_INTERVAL seconds."""
+    """Background task: poll vLLM /metrics every KV_POLL_INTERVAL seconds.
+
+    With TP>1 vLLM emits one metric line per engine/GPU shard. We take the
+    max across all shards (most-loaded GPU) rather than the first match, which
+    avoids the 75% → 0% → 23% interleaving caused by per-shard ordering.
+    """
     global _kv_cache_usage
     first = True
     while True:
@@ -152,15 +157,19 @@ async def _poll_kv_cache() -> None:
             async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(f"{UPSTREAM}/metrics")
             if resp.status_code == 200:
-                m = _KV_METRIC_RE.search(resp.text)
-                if m:
-                    raw = float(m.group(1))
+                values = [float(m) for m in _KV_METRIC_RE.findall(resp.text)]
+                if values:
+                    raw = max(values)
                     if first:
                         _kv_cache_usage = raw
                         first = False
                     else:
                         _kv_cache_usage = (1 - _KV_EMA_ALPHA) * _kv_cache_usage + _KV_EMA_ALPHA * raw
-                    log.debug("kv_cache_usage=%.1f%% (raw=%.1f%%)", _kv_cache_usage * 100, raw * 100)
+                    log.debug(
+                        "kv_cache_usage=%.1f%% (raw_max=%.1f%%, shards=%s)",
+                        _kv_cache_usage * 100, raw * 100,
+                        [f"{v*100:.0f}%" for v in values],
+                    )
         except Exception:
             pass  # upstream may be starting up; ignore silently
         await asyncio.sleep(KV_POLL_INTERVAL)
