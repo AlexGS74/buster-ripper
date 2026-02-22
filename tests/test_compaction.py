@@ -78,6 +78,58 @@ def test_no_nudge_one_token_below_threshold():
     )
 
 
+def test_nudge_on_kv_pressure_alone():
+    """KV cache pressure alone (small session, fast) should trigger nudge."""
+    assert should_nudge_compact(
+        input_tokens=10_000,     # small — would NOT trigger per-session
+        avg_latency_ms=100,      # fast — would NOT trigger per-session
+        max_model_len=200_000,
+        token_ratio=0.75,
+        latency_threshold_ms=15_000,
+        kv_cache_usage=0.80,     # above 0.75 threshold
+        kv_ratio=0.75,
+    )
+
+
+def test_no_nudge_kv_below_threshold():
+    """KV just under threshold + small session → no nudge."""
+    assert not should_nudge_compact(
+        input_tokens=10_000,
+        avg_latency_ms=100,
+        max_model_len=200_000,
+        token_ratio=0.75,
+        latency_threshold_ms=15_000,
+        kv_cache_usage=0.74,
+        kv_ratio=0.75,
+    )
+
+
+def test_nudge_kv_at_exact_threshold():
+    """KV exactly at threshold → nudge."""
+    assert should_nudge_compact(
+        input_tokens=10_000,
+        avg_latency_ms=100,
+        max_model_len=200_000,
+        token_ratio=0.75,
+        latency_threshold_ms=15_000,
+        kv_cache_usage=0.75,
+        kv_ratio=0.75,
+    )
+
+
+def test_kv_ratio_1_0_disables_kv_trigger():
+    """kv_ratio=1.0 means KV trigger is disabled (can never reach 100%)."""
+    assert not should_nudge_compact(
+        input_tokens=10_000,
+        avg_latency_ms=100,
+        max_model_len=200_000,
+        token_ratio=0.75,
+        latency_threshold_ms=15_000,
+        kv_cache_usage=0.99,     # very high KV but kv_ratio disabled
+        kv_ratio=1.0,
+    )
+
+
 # ── compact_token_count ───────────────────────────────────────────────────────
 
 
@@ -103,6 +155,8 @@ def client(monkeypatch):
     monkeypatch.setattr(br, "COMPACT_TOKEN_RATIO", 0.75)
     monkeypatch.setattr(br, "COMPACT_LATENCY_MS", 15_000)
     monkeypatch.setattr(br, "COMPACT_NUDGE_RATIO", 0.95)
+    monkeypatch.setattr(br, "COMPACT_KV_RATIO", 0.75)
+    monkeypatch.setattr(br, "_kv_cache_usage", 0.0)
     return TestClient(app, raise_server_exceptions=True)
 
 
@@ -150,6 +204,34 @@ def test_count_tokens_no_nudge_fast_session(client, monkeypatch):
     resp = client.post("/v1/messages/count_tokens", json=body)
     assert resp.status_code == 200
     assert resp.json()["input_tokens"] == 160_000
+
+
+def test_count_tokens_nudges_on_kv_pressure(client, monkeypatch):
+    """Small/fast session gets nudged when server KV cache is above threshold."""
+    monkeypatch.setattr(br, "_kv_cache_usage", 0.80)  # above 0.75 COMPACT_KV_RATIO
+
+    body = _body(system="small_fast_session")
+    sid = br._session_id(body)
+    # Small, fast session — would NOT trigger per-session compaction
+    br._stats[sid] = SessionStats(input_tokens=10_000, avg_latency_ms=500, request_count=2)
+
+    resp = client.post("/v1/messages/count_tokens", json=body)
+    assert resp.status_code == 200
+    # Should be nudged due to KV pressure: 200_000 × 0.95 = 190_000
+    assert resp.json()["input_tokens"] == 190_000
+
+
+def test_count_tokens_no_nudge_kv_below_threshold(client, monkeypatch):
+    """Small/fast session NOT nudged when KV cache is below threshold."""
+    monkeypatch.setattr(br, "_kv_cache_usage", 0.50)  # below threshold
+
+    body = _body(system="small_fast_low_kv")
+    sid = br._session_id(body)
+    br._stats[sid] = SessionStats(input_tokens=10_000, avg_latency_ms=500, request_count=2)
+
+    resp = client.post("/v1/messages/count_tokens", json=body)
+    assert resp.status_code == 200
+    assert resp.json()["input_tokens"] == 10_000
 
 
 def test_count_tokens_fallback_estimate_on_upstream_404(client, monkeypatch):

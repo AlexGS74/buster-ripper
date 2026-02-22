@@ -66,6 +66,7 @@ Point Claude Code at buster-ripper:
 """
 
 import argparse
+import asyncio
 import dataclasses
 import difflib
 import hashlib
@@ -74,6 +75,7 @@ import logging
 import re
 import sqlite3
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator, Optional
@@ -97,6 +99,8 @@ MAX_MODEL_LEN: int = 200_000
 COMPACT_TOKEN_RATIO: float = 0.75   # nudge when tokens > this fraction of max
 COMPACT_LATENCY_MS: float = 15_000  # nudge when TTFT > this (ms)
 COMPACT_NUDGE_RATIO: float = 0.95   # nudged count = this × MAX_MODEL_LEN
+COMPACT_KV_RATIO: float = 0.75      # nudge when server KV cache usage > this fraction
+KV_POLL_INTERVAL: int = 10          # seconds between /metrics polls
 STATS_DB: Optional[Path] = None     # SQLite path; None = in-memory only
 
 # Matches the framework-injected currentDate line, e.g.:
@@ -125,7 +129,51 @@ _HOP_BY_HOP = frozenset(
 
 log = logging.getLogger("buster-ripper")
 
-app = FastAPI()
+# ── KV cache utilization (updated by background poller) ──────────────────────
+
+_kv_cache_usage: float = 0.0  # 0.0–1.0, EMA-smoothed server-wide value
+
+# Matches vLLM Prometheus metric lines, e.g.:
+#   vllm:gpu_cache_usage_perc{...} 0.714
+_KV_METRIC_RE = re.compile(r'^vllm:gpu_cache_usage_perc\b[^\n]*\s+([\d.]+)', re.MULTILINE)
+
+# EMA alpha for KV cache smoothing. vLLM reports per-interval averages that can
+# bounce (75% → 0% → 23%) when the idle interval resets the counter. α=0.3
+# damps the noise while still reacting within a few poll cycles to real pressure.
+_KV_EMA_ALPHA: float = 0.3
+
+
+async def _poll_kv_cache() -> None:
+    """Background task: poll vLLM /metrics every KV_POLL_INTERVAL seconds."""
+    global _kv_cache_usage
+    first = True
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{UPSTREAM}/metrics")
+            if resp.status_code == 200:
+                m = _KV_METRIC_RE.search(resp.text)
+                if m:
+                    raw = float(m.group(1))
+                    if first:
+                        _kv_cache_usage = raw
+                        first = False
+                    else:
+                        _kv_cache_usage = (1 - _KV_EMA_ALPHA) * _kv_cache_usage + _KV_EMA_ALPHA * raw
+                    log.debug("kv_cache_usage=%.1f%% (raw=%.1f%%)", _kv_cache_usage * 100, raw * 100)
+        except Exception:
+            pass  # upstream may be starting up; ignore silently
+        await asyncio.sleep(KV_POLL_INTERVAL)
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    task = asyncio.create_task(_poll_kv_cache())
+    yield
+    task.cancel()
+
+
+app = FastAPI(lifespan=_lifespan)
 
 
 # ── Session stats & compaction policy ────────────────────────────────────────
@@ -243,15 +291,23 @@ def should_nudge_compact(
     max_model_len: int,
     token_ratio: float,
     latency_threshold_ms: float,
+    kv_cache_usage: float = 0.0,
+    kv_ratio: float = 1.0,
 ) -> bool:
-    """Return True when BOTH the token-fill AND latency thresholds are exceeded.
+    """Return True when compaction should be nudged.
 
-    Requiring both conditions prevents spurious compaction on large but fast
-    requests (e.g. first turn with big system prompt).
+    Two independent triggers — either is sufficient:
+      1. Per-session: token fill AND latency both exceed thresholds.
+         Catches sessions that are large AND slow simultaneously.
+      2. Server-wide: KV cache utilization exceeds kv_ratio.
+         Catches pressure from multiple concurrent sessions even if
+         individual sessions haven't hit the per-session thresholds.
     """
     token_full = input_tokens >= int(max_model_len * token_ratio)
     latency_high = avg_latency_ms >= latency_threshold_ms
-    return token_full and latency_high
+    per_session = token_full and latency_high
+    kv_pressure = kv_cache_usage >= kv_ratio
+    return per_session or kv_pressure
 
 
 def compact_token_count(max_model_len: int, nudge_ratio: float) -> int:
@@ -642,18 +698,24 @@ async def count_tokens(request: Request) -> Response:
         real_tokens = _estimate_tokens(body)
         log.debug("session %s: count_tokens no-stats estimate=%d", sid, real_tokens)
 
-    # Apply compaction nudge if both thresholds are exceeded
-    if stats and should_nudge_compact(
+    # Apply compaction nudge if per-session OR server KV thresholds are exceeded
+    avg_latency = stats.avg_latency_ms if stats else 0.0
+    if should_nudge_compact(
         real_tokens,
-        stats.avg_latency_ms,
+        avg_latency,
         MAX_MODEL_LEN,
         COMPACT_TOKEN_RATIO,
         COMPACT_LATENCY_MS,
+        kv_cache_usage=_kv_cache_usage,
+        kv_ratio=COMPACT_KV_RATIO,
     ):
         reported = compact_token_count(MAX_MODEL_LEN, COMPACT_NUDGE_RATIO)
+        kv_trigger = _kv_cache_usage >= COMPACT_KV_RATIO
+        session_trigger = real_tokens >= int(MAX_MODEL_LEN * COMPACT_TOKEN_RATIO) and avg_latency >= COMPACT_LATENCY_MS
+        trigger = "kv_pressure" if kv_trigger and not session_trigger else "session" if session_trigger and not kv_trigger else "both"
         log.info(
-            "session %s: nudging compaction tokens=%d→%d avg_latency=%.0f ms",
-            sid, real_tokens, reported, stats.avg_latency_ms,
+            "session %s: nudging compaction tokens=%d→%d avg_latency=%.0f ms kv=%.1f%% trigger=%s",
+            sid, real_tokens, reported, avg_latency, _kv_cache_usage * 100, trigger,
         )
     else:
         reported = real_tokens
@@ -741,6 +803,12 @@ if __name__ == "__main__":
         help="SQLite file for session stats persistence across restarts "
              "(default: in-memory only)",
     )
+    parser.add_argument(
+        "--compact-kv-ratio", type=float, default=0.75,
+        help="Nudge ALL sessions to compact when server-wide KV cache usage "
+             "exceeds this fraction (default: 0.75). Polled from upstream /metrics "
+             "every 10 s. Set to 1.0 to disable KV-pressure trigger.",
+    )
     args = parser.parse_args()
 
     UPSTREAM = args.upstream
@@ -749,6 +817,7 @@ if __name__ == "__main__":
     MAX_MODEL_LEN = args.max_model_len
     COMPACT_TOKEN_RATIO = args.compact_token_ratio
     COMPACT_LATENCY_MS = args.compact_latency_ms
+    COMPACT_KV_RATIO = args.compact_kv_ratio
 
     if args.dump_dir:
         DUMP_DIR = Path(args.dump_dir).expanduser().resolve()
@@ -773,8 +842,8 @@ if __name__ == "__main__":
         DUMP_DIR or "disabled",
     )
     log.info(
-        "Compaction policy: max_len=%d token_ratio=%.2f latency_ms=%.0f nudge_ratio=%.2f",
-        MAX_MODEL_LEN, COMPACT_TOKEN_RATIO, COMPACT_LATENCY_MS, COMPACT_NUDGE_RATIO,
+        "Compaction policy: max_len=%d token_ratio=%.2f latency_ms=%.0f nudge_ratio=%.2f kv_ratio=%.2f",
+        MAX_MODEL_LEN, COMPACT_TOKEN_RATIO, COMPACT_LATENCY_MS, COMPACT_NUDGE_RATIO, COMPACT_KV_RATIO,
     )
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
