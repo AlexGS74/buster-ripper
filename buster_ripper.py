@@ -757,9 +757,7 @@ async def chat_completions(request: Request) -> Response:
         try:
             data = json.loads(body)
             kwargs = data.setdefault("chat_template_kwargs", {})
-            kwargs.setdefault("enable_thinking", True)
-            if EVAL_THINKING_BUDGET > 0:
-                kwargs.setdefault("thinking_budget", EVAL_THINKING_BUDGET)
+            kwargs.setdefault("enable_thinking", False)
             data.pop("max_gen_toks", None)  # lm-eval internal field, not an OpenAI field
             if EVAL_MAX_TOKENS > 0:
                 data.setdefault("max_tokens", EVAL_MAX_TOKENS)
