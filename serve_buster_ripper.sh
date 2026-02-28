@@ -20,8 +20,6 @@ STRIP_DATE=${STRIP_DATE:-0}
 VERBOSE=${VERBOSE:-0}
 DUMP_DIR=${DUMP_DIR:-${HOME}/mllm/prompt-diffs}
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 EXTRA_FLAGS=""
 [[ "${STRIP_DATE}" == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --strip-date"
 [[ "${VERBOSE}"     == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --verbose"
@@ -29,7 +27,7 @@ EXTRA_FLAGS=""
 
 echo "buster-ripper → ${UPSTREAM}  listening on ${HOST}:${PORT}"
 
-exec uv run --directory "${SCRIPT_DIR}" buster-ripper \
+exec buster-ripper \
   --upstream "${UPSTREAM}" \
   --host     "${HOST}" \
   --port     "${PORT}" \
