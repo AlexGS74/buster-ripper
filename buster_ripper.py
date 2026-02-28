@@ -741,9 +741,13 @@ async def chat_completions(request: Request) -> Response:
     """Forward chat completions to vLLM, optionally injecting eval params.
 
     When --eval-mode is active:
-      - Sets chat_template_kwargs.enable_thinking = false so GLM-4.7 returns
-        the answer in content (not reasoning) where lm-eval can score it.
-      - Sets max_tokens if the request doesn't already specify one.
+      - Sets chat_template_kwargs.enable_thinking = true so GLM-4.7 uses
+        chain-of-thought reasoning for better code/math scores.
+      - Drops max_gen_toks (lm-eval internal field that vLLM ignores with a warning).
+      - Sets max_tokens cap if --eval-max-tokens was specified.
+      - Post-processes the response: if content is null (thinking model puts the
+        answer in reasoning_content), copies reasoning_content → content so
+        lm-eval can score it.
     """
     body = await request.body()
     headers = _forward_headers(request)
@@ -752,13 +756,14 @@ async def chat_completions(request: Request) -> Response:
         try:
             data = json.loads(body)
             kwargs = data.setdefault("chat_template_kwargs", {})
-            kwargs.setdefault("enable_thinking", False)
+            kwargs.setdefault("enable_thinking", True)
+            data.pop("max_gen_toks", None)  # lm-eval internal field, not an OpenAI field
             if EVAL_MAX_TOKENS > 0:
                 data.setdefault("max_tokens", EVAL_MAX_TOKENS)
             body = json.dumps(data).encode()
             headers["content-length"] = str(len(body))
             if VERBOSE:
-                log.info("eval-mode: injected enable_thinking=false")
+                log.info("eval-mode: injected enable_thinking=true, dropped max_gen_toks")
         except Exception:
             pass  # leave body untouched on parse error
 
@@ -773,6 +778,30 @@ async def chat_completions(request: Request) -> Response:
             content=body,
             headers=headers,
         )
+
+    # In eval-mode with thinking enabled, GLM-4.7 may return the answer in
+    # reasoning_content with content=null. Copy it over so lm-eval can score it.
+    if EVAL_MODE:
+        try:
+            resp_data = resp.json()
+            fixed = False
+            for choice in resp_data.get("choices", []):
+                msg = choice.get("message", {})
+                if not msg.get("content"):
+                    thinking = msg.get("reasoning_content") or msg.get("reasoning") or ""
+                    if thinking:
+                        msg["content"] = thinking
+                        fixed = True
+            if fixed:
+                resp_body = json.dumps(resp_data).encode()
+                resp_headers = dict(_response_headers(resp.headers))
+                resp_headers["content-length"] = str(len(resp_body))
+                if VERBOSE:
+                    log.info("eval-mode: copied reasoning_content → content")
+                return Response(content=resp_body, status_code=resp.status_code, headers=resp_headers)
+        except Exception:
+            pass  # fall through to normal response on parse error
+
     return Response(
         content=resp.content,
         status_code=resp.status_code,
@@ -830,8 +859,8 @@ async def passthrough(request: Request, path: str) -> Response:
 @click.option("--stats-db", metavar="PATH", default=None,
               help="SQLite file for session stats persistence across restarts.")
 @click.option("--eval-mode", is_flag=True,
-              help="Inject enable_thinking=false + max_tokens into /v1/chat/completions. "
-                   "Use with lm-evaluation-harness so GLM-4.7 answers appear in content.")
+              help="Eval proxy mode for lm-evaluation-harness: enables thinking, drops "
+                   "max_gen_toks, and copies reasoning_content→content so lm-eval can score it.")
 @click.option("--eval-max-tokens", default=0, show_default=True, type=int,
               help="max_tokens injected into chat completions when --eval-mode is active.")
 def main(
