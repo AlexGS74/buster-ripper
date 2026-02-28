@@ -95,7 +95,7 @@ DUMP_DIR: Path | None = None
 # eval-mode: inject chat_template_kwargs into /v1/chat/completions requests
 # so GLM-4.7 returns answers in content (not reasoning) for lm-eval scoring.
 EVAL_MODE = False
-EVAL_MAX_TOKENS: int = 1024        # max_tokens injected when EVAL_MODE is on
+EVAL_MAX_TOKENS: int = 0           # 0 = no limit (let vLLM use model default)
 
 # ── Compaction policy config ──────────────────────────────────────────────────
 # Max context length of the served model. count_tokens will return a nudged
@@ -753,7 +753,8 @@ async def chat_completions(request: Request) -> Response:
             data = json.loads(body)
             kwargs = data.setdefault("chat_template_kwargs", {})
             kwargs.setdefault("enable_thinking", False)
-            data.setdefault("max_tokens", EVAL_MAX_TOKENS)
+            if EVAL_MAX_TOKENS > 0:
+                data.setdefault("max_tokens", EVAL_MAX_TOKENS)
             body = json.dumps(data).encode()
             headers["content-length"] = str(len(body))
             if VERBOSE:
@@ -831,7 +832,7 @@ async def passthrough(request: Request, path: str) -> Response:
 @click.option("--eval-mode", is_flag=True,
               help="Inject enable_thinking=false + max_tokens into /v1/chat/completions. "
                    "Use with lm-evaluation-harness so GLM-4.7 answers appear in content.")
-@click.option("--eval-max-tokens", default=1024, show_default=True, type=int,
+@click.option("--eval-max-tokens", default=0, show_default=True, type=int,
               help="max_tokens injected into chat completions when --eval-mode is active.")
 def main(
     upstream, host, port, strip_date, verbose, dump_dir,
