@@ -5,6 +5,7 @@
 #   "fastapi",
 #   "uvicorn[standard]",
 #   "httpx",
+#   "click",
 # ]
 # ///
 # ruff: noqa: E501
@@ -65,8 +66,8 @@ Point Claude Code at buster-ripper:
   ANTHROPIC_BASE_URL=http://localhost:30001 claude ...
 """
 
-import argparse
 import asyncio
+import click
 import dataclasses
 import difflib
 import hashlib
@@ -90,6 +91,11 @@ UPSTREAM = "http://localhost:30000"
 STRIP_DATE = False
 VERBOSE = False
 DUMP_DIR: Path | None = None
+
+# eval-mode: inject chat_template_kwargs into /v1/chat/completions requests
+# so GLM-4.7 returns answers in content (not reasoning) for lm-eval scoring.
+EVAL_MODE = False
+EVAL_MAX_TOKENS: int = 1024        # max_tokens injected when EVAL_MODE is on
 
 # ── Compaction policy config ──────────────────────────────────────────────────
 # Max context length of the served model. count_tokens will return a nudged
@@ -727,6 +733,47 @@ async def count_tokens(request: Request) -> Response:
     )
 
 
+# ── /v1/chat/completions — eval-mode thinking injection ───────────────────────
+
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: Request) -> Response:
+    """Forward chat completions to vLLM, optionally injecting eval params.
+
+    When --eval-mode is active:
+      - Sets chat_template_kwargs.enable_thinking = false so GLM-4.7 returns
+        the answer in content (not reasoning) where lm-eval can score it.
+      - Sets max_tokens if the request doesn't already specify one.
+    """
+    body = await request.body()
+    headers = _forward_headers(request)
+
+    if EVAL_MODE and body:
+        try:
+            data = json.loads(body)
+            kwargs = data.setdefault("chat_template_kwargs", {})
+            kwargs.setdefault("enable_thinking", False)
+            data.setdefault("max_tokens", EVAL_MAX_TOKENS)
+            body = json.dumps(data).encode()
+            headers["content-length"] = str(len(body))
+            if VERBOSE:
+                log.info("eval-mode: injected enable_thinking=false max_tokens=%d", EVAL_MAX_TOKENS)
+        except Exception:
+            pass  # leave body untouched on parse error
+
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.post(
+            f"{UPSTREAM}/v1/chat/completions",
+            content=body,
+            headers=headers,
+        )
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        headers=_response_headers(resp.headers),
+    )
+
+
 # ── Passthrough for all other endpoints (health, /v1/models, etc.) ────────────
 
 
@@ -752,98 +799,85 @@ async def passthrough(request: Request, path: str) -> Response:
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "--upstream", default="http://localhost:30000",
-        help="vLLM base URL (default: http://localhost:30000)",
-    )
-    parser.add_argument(
-        "--host", default="0.0.0.0",
-        help="Bind address (default: 0.0.0.0)",
-    )
-    parser.add_argument(
-        "--port", type=int, default=30001,
-        help="Listen port (default: 30001)",
-    )
-    parser.add_argument(
-        "--strip-date", action="store_true",
-        help="Strip framework-injected 'Today's date is ...' from user messages",
-    )
-    parser.add_argument(
-        "--verbose", action="store_true",
-        help="Log every normalization applied and per-turn token/latency stats",
-    )
-    parser.add_argument(
-        "--dump-dir", metavar="PATH",
-        help=(
-            "Enable session prompt diffing. Saves full body for turn 0 and "
-            "unified diffs for subsequent turns under PATH/<session_id>/."
-        ),
-    )
-    parser.add_argument(
-        "--max-model-len", type=int, default=200_000,
-        help="Max context length of the served model (default: 200000). "
-             "Used by the compaction policy.",
-    )
-    parser.add_argument(
-        "--compact-token-ratio", type=float, default=0.75,
-        help="Nudge compaction when tracked tokens exceed this fraction of "
-             "--max-model-len (default: 0.75)",
-    )
-    parser.add_argument(
-        "--compact-latency-ms", type=float, default=15_000,
-        help="Nudge compaction when average TTFT exceeds this value in ms "
-             "(default: 15000)",
-    )
-    parser.add_argument(
-        "--stats-db", metavar="PATH",
-        help="SQLite file for session stats persistence across restarts "
-             "(default: in-memory only)",
-    )
-    parser.add_argument(
-        "--compact-kv-ratio", type=float, default=0.75,
-        help="Nudge ALL sessions to compact when server-wide KV cache usage "
-             "exceeds this fraction (default: 0.75). Polled from upstream /metrics "
-             "every 10 s. Set to 1.0 to disable KV-pressure trigger.",
-    )
-    args = parser.parse_args()
+@click.command(help=__doc__)
+@click.option("--upstream", default="http://localhost:30000", show_default=True,
+              help="vLLM base URL.")
+@click.option("--host", default="0.0.0.0", show_default=True,
+              help="Bind address.")
+@click.option("--port", default=30001, show_default=True, type=int,
+              help="Listen port.")
+@click.option("--strip-date", is_flag=True,
+              help="Strip framework-injected 'Today's date is ...' from user messages.")
+@click.option("--verbose", is_flag=True,
+              help="Log every normalization applied and per-turn token/latency stats.")
+@click.option("--dump-dir", metavar="PATH", default=None,
+              help="Enable session prompt diffing under PATH/<session_id>/.")
+@click.option("--max-model-len", default=200_000, show_default=True, type=int,
+              help="Max context length of the served model (used by compaction policy).")
+@click.option("--compact-token-ratio", default=0.75, show_default=True, type=float,
+              help="Nudge compaction when tokens exceed this fraction of --max-model-len.")
+@click.option("--compact-latency-ms", default=15_000.0, show_default=True, type=float,
+              help="Nudge compaction when average TTFT exceeds this value in ms.")
+@click.option("--compact-kv-ratio", default=0.75, show_default=True, type=float,
+              help="Nudge compaction when server KV cache usage exceeds this fraction. "
+                   "Set to 1.0 to disable.")
+@click.option("--stats-db", metavar="PATH", default=None,
+              help="SQLite file for session stats persistence across restarts.")
+@click.option("--eval-mode", is_flag=True,
+              help="Inject enable_thinking=false + max_tokens into /v1/chat/completions. "
+                   "Use with lm-evaluation-harness so GLM-4.7 answers appear in content.")
+@click.option("--eval-max-tokens", default=1024, show_default=True, type=int,
+              help="max_tokens injected into chat completions when --eval-mode is active.")
+def main(
+    upstream, host, port, strip_date, verbose, dump_dir,
+    max_model_len, compact_token_ratio, compact_latency_ms, compact_kv_ratio,
+    stats_db, eval_mode, eval_max_tokens,
+):
+    global UPSTREAM, STRIP_DATE, VERBOSE, DUMP_DIR
+    global MAX_MODEL_LEN, COMPACT_TOKEN_RATIO, COMPACT_LATENCY_MS, COMPACT_KV_RATIO
+    global EVAL_MODE, EVAL_MAX_TOKENS
 
-    UPSTREAM = args.upstream
-    STRIP_DATE = args.strip_date
-    VERBOSE = args.verbose
-    MAX_MODEL_LEN = args.max_model_len
-    COMPACT_TOKEN_RATIO = args.compact_token_ratio
-    COMPACT_LATENCY_MS = args.compact_latency_ms
-    COMPACT_KV_RATIO = args.compact_kv_ratio
+    UPSTREAM = upstream
+    STRIP_DATE = strip_date
+    VERBOSE = verbose
+    MAX_MODEL_LEN = max_model_len
+    COMPACT_TOKEN_RATIO = compact_token_ratio
+    COMPACT_LATENCY_MS = compact_latency_ms
+    COMPACT_KV_RATIO = compact_kv_ratio
+    EVAL_MODE = eval_mode
+    EVAL_MAX_TOKENS = eval_max_tokens
 
-    if args.dump_dir:
-        DUMP_DIR = Path(args.dump_dir).expanduser().resolve()
+    if dump_dir:
+        DUMP_DIR = Path(dump_dir).expanduser().resolve()
         DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.stats_db:
-        STATS_DB = Path(args.stats_db).expanduser().resolve()
-        _db_conn = _db_init(STATS_DB)
+    if stats_db:
+        db_path = Path(stats_db).expanduser().resolve()
+        global _db_conn
+        _db_conn = _db_init(db_path)
         _stats.update(_db_load(_db_conn))
-        log.info("stats db: %s (%d sessions loaded)", STATS_DB, len(_stats))
+        log.info("stats db: %s (%d sessions loaded)", db_path, len(_stats))
 
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        level=logging.DEBUG if verbose else logging.INFO,
         format="%(asctime)s [buster-ripper] %(message)s",
         datefmt="%H:%M:%S",
     )
 
-    log.info("Listening on %s:%d → upstream %s", args.host, args.port, UPSTREAM)
+    log.info("Listening on %s:%d → upstream %s", host, port, UPSTREAM)
     log.info(
-        "Tool sorting: enabled | Date stripping: %s | Dump dir: %s",
+        "Tool sorting: enabled | Date stripping: %s | Dump dir: %s | Eval mode: %s",
         "enabled" if STRIP_DATE else "disabled",
         DUMP_DIR or "disabled",
+        f"enabled (max_tokens={EVAL_MAX_TOKENS})" if EVAL_MODE else "disabled",
     )
     log.info(
         "Compaction policy: max_len=%d token_ratio=%.2f latency_ms=%.0f nudge_ratio=%.2f kv_ratio=%.2f",
         MAX_MODEL_LEN, COMPACT_TOKEN_RATIO, COMPACT_LATENCY_MS, COMPACT_NUDGE_RATIO, COMPACT_KV_RATIO,
     )
 
-    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(app, host=host, port=port, log_level="warning")
+
+
+if __name__ == "__main__":
+    main()
