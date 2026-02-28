@@ -758,7 +758,7 @@ async def chat_completions(request: Request) -> Response:
             body = json.dumps(data).encode()
             headers["content-length"] = str(len(body))
             if VERBOSE:
-                log.info("eval-mode: injected enable_thinking=false max_tokens=%d", EVAL_MAX_TOKENS)
+                log.info("eval-mode: injected enable_thinking=false")
         except Exception:
             pass  # leave body untouched on parse error
 
