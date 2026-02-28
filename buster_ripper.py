@@ -96,6 +96,7 @@ DUMP_DIR: Path | None = None
 # so GLM-4.7 returns answers in content (not reasoning) for lm-eval scoring.
 EVAL_MODE = False
 EVAL_MAX_TOKENS: int = 0           # 0 = no limit (let vLLM use model default)
+EVAL_THINKING_BUDGET: int = 0      # 0 = no budget (unlimited thinking)
 
 # ── Compaction policy config ──────────────────────────────────────────────────
 # Max context length of the served model. count_tokens will return a nudged
@@ -757,6 +758,8 @@ async def chat_completions(request: Request) -> Response:
             data = json.loads(body)
             kwargs = data.setdefault("chat_template_kwargs", {})
             kwargs.setdefault("enable_thinking", True)
+            if EVAL_THINKING_BUDGET > 0:
+                kwargs.setdefault("thinking_budget", EVAL_THINKING_BUDGET)
             data.pop("max_gen_toks", None)  # lm-eval internal field, not an OpenAI field
             if EVAL_MAX_TOKENS > 0:
                 data.setdefault("max_tokens", EVAL_MAX_TOKENS)
@@ -863,14 +866,17 @@ async def passthrough(request: Request, path: str) -> Response:
                    "max_gen_toks, and copies reasoning_content→content so lm-eval can score it.")
 @click.option("--eval-max-tokens", default=0, show_default=True, type=int,
               help="max_tokens injected into chat completions when --eval-mode is active.")
+@click.option("--eval-thinking-budget", default=0, show_default=True, type=int,
+              help="thinking_budget injected into chat_template_kwargs when --eval-mode is active. "
+                   "Caps the think block to prevent runaway reasoning loops. 0 = no budget.")
 def main(
     upstream, host, port, strip_date, verbose, dump_dir,
     max_model_len, compact_token_ratio, compact_latency_ms, compact_kv_ratio,
-    stats_db, eval_mode, eval_max_tokens,
+    stats_db, eval_mode, eval_max_tokens, eval_thinking_budget,
 ):
     global UPSTREAM, STRIP_DATE, VERBOSE, DUMP_DIR
     global MAX_MODEL_LEN, COMPACT_TOKEN_RATIO, COMPACT_LATENCY_MS, COMPACT_KV_RATIO
-    global EVAL_MODE, EVAL_MAX_TOKENS
+    global EVAL_MODE, EVAL_MAX_TOKENS, EVAL_THINKING_BUDGET
 
     UPSTREAM = upstream
     STRIP_DATE = strip_date
@@ -881,6 +887,7 @@ def main(
     COMPACT_KV_RATIO = compact_kv_ratio
     EVAL_MODE = eval_mode
     EVAL_MAX_TOKENS = eval_max_tokens
+    EVAL_THINKING_BUDGET = eval_thinking_budget
 
     if dump_dir:
         DUMP_DIR = Path(dump_dir).expanduser().resolve()
