@@ -29,7 +29,7 @@ EXTRA_FLAGS=""
 
 echo "buster-ripper → ${UPSTREAM}  listening on ${HOST}:${PORT}"
 
-exec uv run "${SCRIPT_DIR}/buster_ripper.py" \
+exec uv run --directory "${SCRIPT_DIR}" buster-ripper \
   --upstream "${UPSTREAM}" \
   --host     "${HOST}" \
   --port     "${PORT}" \

@@ -92,11 +92,65 @@ STRIP_DATE = False
 VERBOSE = False
 DUMP_DIR: Path | None = None
 
-# eval-mode: inject chat_template_kwargs into /v1/chat/completions requests
-# so GLM-4.7 returns answers in content (not reasoning) for lm-eval scoring.
+# ── Eval-mode model profiles ──────────────────────────────────────────────────
+# Each profile is a named set of strategies for working around model-specific
+# quirks when running lm-evaluation-harness.
+#
+# Strategies (all optional, compose independently):
+#
+#   inject_chat_template_kwargs
+#       Injects chat_template_kwargs into the request body.
+#       Used by models (e.g. GLM-4.7) that control thinking via this field.
+#       Controlled by enable_thinking flag per request.
+#
+#   strip_code_fences
+#       Strips leading ```...``` wrapper from response content.
+#       lm-eval's build_predictions_instruct filter truncates at the first ```
+#       it finds, so a response that *starts* with ``` drops the entire body.
+#       Strip here so the filter receives bare code and assembles correctly.
+#
+#   copy_reasoning_to_content
+#       When content is null/empty and reasoning_content is present, copies
+#       reasoning_content → content so lm-eval can score the answer.
+#       Needed when thinking is enabled and the model separates reasoning from
+#       the final answer.
+#
+# Model-agnostic strategies (always active in eval mode, not per-profile):
+#   - strip max_gen_toks from request (lm-eval internal field, not OpenAI)
+#   - strip empty Bearer auth header (lm-eval sends "Bearer " with no token)
+
+
+@dataclasses.dataclass(frozen=True)
+class ModelProfile:
+    """Strategy flags for a specific model's eval-mode quirks."""
+    inject_chat_template_kwargs: bool = False
+    strip_code_fences: bool = False
+    copy_reasoning_to_content: bool = False
+
+    def describe(self) -> str:
+        active = [
+            name for name, val in dataclasses.asdict(self).items() if val
+        ]
+        return ", ".join(active) if active else "none"
+
+
+# Registry of named profiles. "passthrough" = no model-specific strategies.
+_PROFILES: dict[str, ModelProfile] = {
+    "passthrough": ModelProfile(),
+    "glm47": ModelProfile(
+        inject_chat_template_kwargs=True,
+        strip_code_fences=True,
+        copy_reasoning_to_content=True,
+    ),
+    # Add new profiles here as new models are onboarded, e.g.:
+    # "qwen": ModelProfile(strip_code_fences=True, ...),
+}
+
 EVAL_MODE = False
 EVAL_MAX_TOKENS: int = 0           # 0 = no limit (let vLLM use model default)
+EVAL_THINKING: bool = False        # passed to inject_chat_template_kwargs strategy
 EVAL_THINKING_BUDGET: int = 0      # 0 = no budget (unlimited thinking)
+EVAL_PROFILE: ModelProfile = _PROFILES["passthrough"]
 
 # ── Compaction policy config ──────────────────────────────────────────────────
 # Max context length of the served model. count_tokens will return a nudged
@@ -734,41 +788,54 @@ async def count_tokens(request: Request) -> Response:
     )
 
 
-# ── /v1/chat/completions — eval-mode thinking injection ───────────────────────
+# ── /v1/chat/completions — eval-mode proxy ────────────────────────────────────
 
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request) -> Response:
-    """Forward chat completions to vLLM, optionally injecting eval params.
+    """Forward chat completions to vLLM with optional eval-mode transformations.
 
-    When --eval-mode is active:
-      - Sets chat_template_kwargs.enable_thinking = true so GLM-4.7 uses
-        chain-of-thought reasoning for better code/math scores.
-      - Drops max_gen_toks (lm-eval internal field that vLLM ignores with a warning).
-      - Sets max_tokens cap if --eval-max-tokens was specified.
-      - Post-processes the response: if content is null (thinking model puts the
-        answer in reasoning_content), copies reasoning_content → content so
-        lm-eval can score it.
+    Model-agnostic (always applied in eval mode):
+      - Drops max_gen_toks (lm-eval internal field; vLLM ignores it with a warning
+        and lm-eval also uses it to truncate responses internally).
+      - Strips empty Bearer auth header (lm-eval sends "Bearer " with no token).
+      - Applies max_tokens cap if --eval-max-tokens was specified.
+
+    Model-specific (controlled by --eval-profile):
+      - inject_chat_template_kwargs: injects enable_thinking into the request.
+      - copy_reasoning_to_content:   copies reasoning_content → content when null.
+      - strip_code_fences:           extracts bare code from ```...``` wrappers so
+                                     lm-eval's build_predictions_instruct filter
+                                     can assemble doc["prompt"] + body correctly.
     """
     body = await request.body()
     headers = _forward_headers(request)
 
+    # ── Request transforms ────────────────────────────────────────────────────
     if EVAL_MODE and body:
         try:
             data = json.loads(body)
-            kwargs = data.setdefault("chat_template_kwargs", {})
-            kwargs.setdefault("enable_thinking", False)
-            data.pop("max_gen_toks", None)  # lm-eval internal field, not an OpenAI field
+
+            # Model-agnostic: strip lm-eval internal field
+            data.pop("max_gen_toks", None)
+
+            # Model-agnostic: cap max_tokens
             if EVAL_MAX_TOKENS > 0:
                 data.setdefault("max_tokens", EVAL_MAX_TOKENS)
+
+            # Profile strategy: inject chat_template_kwargs
+            if EVAL_PROFILE.inject_chat_template_kwargs:
+                kwargs = data.setdefault("chat_template_kwargs", {})
+                kwargs.setdefault("enable_thinking", EVAL_THINKING)
+                if VERBOSE:
+                    log.info("eval-mode: injected chat_template_kwargs enable_thinking=%s", EVAL_THINKING)
+
             body = json.dumps(data).encode()
             headers["content-length"] = str(len(body))
-            if VERBOSE:
-                log.info("eval-mode: injected enable_thinking=true, dropped max_gen_toks")
         except Exception:
             pass  # leave body untouched on parse error
 
-    # Strip empty/invalid Authorization headers (lm-eval sends "Bearer " with no token)
+    # Model-agnostic: strip empty/invalid Authorization header
     auth = headers.get("authorization", "")
     if auth.strip() in ("Bearer", "Bearer "):
         headers.pop("authorization", None)
@@ -780,25 +847,40 @@ async def chat_completions(request: Request) -> Response:
             headers=headers,
         )
 
-    # In eval-mode with thinking enabled, GLM-4.7 may return the answer in
-    # reasoning_content with content=null. Copy it over so lm-eval can score it.
+    # ── Response transforms ───────────────────────────────────────────────────
     if EVAL_MODE:
         try:
             resp_data = resp.json()
             fixed = False
+
             for choice in resp_data.get("choices", []):
                 msg = choice.get("message", {})
-                if not msg.get("content"):
+
+                # Profile strategy: copy reasoning_content → content when null
+                if EVAL_PROFILE.copy_reasoning_to_content and not msg.get("content"):
                     thinking = msg.get("reasoning_content") or msg.get("reasoning") or ""
                     if thinking:
                         msg["content"] = thinking
                         fixed = True
+                        if VERBOSE:
+                            log.info("eval-mode: copied reasoning_content → content")
+
+                # Profile strategy: strip code fences
+                if EVAL_PROFILE.strip_code_fences:
+                    content = msg.get("content") or ""
+                    if content.startswith("```"):
+                        after_open = content[content.index("\n") + 1:] if "\n" in content else ""
+                        close_idx = after_open.rfind("\n```")
+                        bare = after_open[:close_idx] if close_idx != -1 else after_open
+                        msg["content"] = bare
+                        fixed = True
+                        if VERBOSE:
+                            log.info("eval-mode: stripped code fence (%d→%d chars)", len(content), len(bare))
+
             if fixed:
                 resp_body = json.dumps(resp_data).encode()
                 resp_headers = dict(_response_headers(resp.headers))
                 resp_headers["content-length"] = str(len(resp_body))
-                if VERBOSE:
-                    log.info("eval-mode: copied reasoning_content → content")
                 return Response(content=resp_body, status_code=resp.status_code, headers=resp_headers)
         except Exception:
             pass  # fall through to normal response on parse error
@@ -860,21 +942,27 @@ async def passthrough(request: Request, path: str) -> Response:
 @click.option("--stats-db", metavar="PATH", default=None,
               help="SQLite file for session stats persistence across restarts.")
 @click.option("--eval-mode", is_flag=True,
-              help="Eval proxy mode for lm-evaluation-harness: enables thinking, drops "
-                   "max_gen_toks, and copies reasoning_content→content so lm-eval can score it.")
+              help="Eval proxy mode for lm-evaluation-harness: drops max_gen_toks, strips empty "
+                   "auth, applies --eval-profile strategies.")
+@click.option("--eval-profile",
+              type=click.Choice(list(_PROFILES.keys())), default="passthrough", show_default=True,
+              help="Model-specific eval strategy profile. "
+                   f"Available: {', '.join(_PROFILES)}.")
 @click.option("--eval-max-tokens", default=0, show_default=True, type=int,
-              help="max_tokens injected into chat completions when --eval-mode is active.")
+              help="max_tokens cap injected into requests when --eval-mode is active. 0 = no cap.")
+@click.option("--eval-thinking", is_flag=True,
+              help="Pass enable_thinking=true via chat_template_kwargs (requires a profile with "
+                   "inject_chat_template_kwargs, e.g. --eval-profile glm47).")
 @click.option("--eval-thinking-budget", default=0, show_default=True, type=int,
-              help="thinking_budget injected into chat_template_kwargs when --eval-mode is active. "
-                   "Caps the think block to prevent runaway reasoning loops. 0 = no budget.")
+              help="thinking_budget cap for --eval-thinking. 0 = unlimited.")
 def main(
     upstream, host, port, strip_date, verbose, dump_dir,
     max_model_len, compact_token_ratio, compact_latency_ms, compact_kv_ratio,
-    stats_db, eval_mode, eval_max_tokens, eval_thinking_budget,
+    stats_db, eval_mode, eval_profile, eval_max_tokens, eval_thinking, eval_thinking_budget,
 ):
     global UPSTREAM, STRIP_DATE, VERBOSE, DUMP_DIR
     global MAX_MODEL_LEN, COMPACT_TOKEN_RATIO, COMPACT_LATENCY_MS, COMPACT_KV_RATIO
-    global EVAL_MODE, EVAL_MAX_TOKENS, EVAL_THINKING_BUDGET
+    global EVAL_MODE, EVAL_MAX_TOKENS, EVAL_THINKING, EVAL_THINKING_BUDGET, EVAL_PROFILE
 
     UPSTREAM = upstream
     STRIP_DATE = strip_date
@@ -884,7 +972,9 @@ def main(
     COMPACT_LATENCY_MS = compact_latency_ms
     COMPACT_KV_RATIO = compact_kv_ratio
     EVAL_MODE = eval_mode
+    EVAL_PROFILE = _PROFILES[eval_profile]
     EVAL_MAX_TOKENS = eval_max_tokens
+    EVAL_THINKING = eval_thinking
     EVAL_THINKING_BUDGET = eval_thinking_budget
 
     if dump_dir:
@@ -909,7 +999,7 @@ def main(
         "Tool sorting: enabled | Date stripping: %s | Dump dir: %s | Eval mode: %s",
         "enabled" if STRIP_DATE else "disabled",
         DUMP_DIR or "disabled",
-        f"enabled (max_tokens={EVAL_MAX_TOKENS})" if EVAL_MODE else "disabled",
+        f"enabled (profile={eval_profile}, max_tokens={EVAL_MAX_TOKENS}, thinking={'on' if EVAL_THINKING else 'off'})" if EVAL_MODE else "disabled",
     )
     log.info(
         "Compaction policy: max_len=%d token_ratio=%.2f latency_ms=%.0f nudge_ratio=%.2f kv_ratio=%.2f",
