@@ -761,6 +761,11 @@ async def chat_completions(request: Request) -> Response:
         except Exception:
             pass  # leave body untouched on parse error
 
+    # Strip empty/invalid Authorization headers (lm-eval sends "Bearer " with no token)
+    auth = headers.get("authorization", "")
+    if auth.strip() in ("Bearer", "Bearer "):
+        headers.pop("authorization", None)
+
     async with httpx.AsyncClient(timeout=300) as client:
         resp = await client.post(
             f"{UPSTREAM}/v1/chat/completions",
