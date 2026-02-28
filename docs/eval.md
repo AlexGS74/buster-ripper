@@ -202,6 +202,7 @@ This is already the default in `eval_glm47.sh` (`REPETITION_PENALTY=1.05`).
   prefill as a complete setup and generates EOS after the import. These
   problems will always fail until the task format is changed.
 
-- **Thinking budget not yet injected:** `--eval-thinking-budget` is parsed but
-  not yet wired into the request. If runaway thinking loops are a problem,
-  lower `--eval-max-tokens` instead.
+- **Thinking budget:** `--eval-thinking-budget N` injects `thinking_budget=N`
+  into `chat_template_kwargs` when `--eval-thinking` is active. Only effective
+  with profiles that include `inject_chat_template_kwargs` (e.g. `glm47`).
+  Set to 0 (default) for unlimited thinking.

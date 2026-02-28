@@ -51,8 +51,14 @@ async def chat_completions(request: Request) -> Response:
             if profile.inject_chat_template_kwargs:
                 kwargs = data.setdefault("chat_template_kwargs", {})
                 kwargs.setdefault("enable_thinking", config.EVAL_THINKING)
+                if config.EVAL_THINKING_BUDGET > 0:
+                    kwargs.setdefault("thinking_budget", config.EVAL_THINKING_BUDGET)
                 if config.VERBOSE:
-                    log.info("eval-mode: injected chat_template_kwargs enable_thinking=%s", config.EVAL_THINKING)
+                    log.info(
+                        "eval-mode: injected chat_template_kwargs enable_thinking=%s thinking_budget=%s",
+                        config.EVAL_THINKING,
+                        config.EVAL_THINKING_BUDGET if config.EVAL_THINKING_BUDGET > 0 else "unlimited",
+                    )
 
             body = json.dumps(data).encode()
             headers["content-length"] = str(len(body))
