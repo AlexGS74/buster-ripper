@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
 from .. import config
-from ..utils import forward_headers, response_headers
+from ..utils import forward_headers, response_headers, split_thinking
 
 router = APIRouter()
 log = logging.getLogger("buster-ripper")
@@ -78,25 +78,46 @@ async def chat_completions(request: Request) -> Response:
         )
 
     # ── Response transforms ───────────────────────────────────────────────────
-    if config.EVAL_MODE:
-        try:
-            resp_data = resp.json()
-            fixed = False
+    try:
+        resp_data = resp.json()
+        fixed = False
 
-            for choice in resp_data.get("choices", []):
-                msg = choice.get("message", {})
+        for choice in resp_data.get("choices", []):
+            msg = choice.get("message", {})
+            content = msg.get("content") or ""
 
-                # Profile strategy: copy reasoning_content → content when null
+            if config.EVAL_MODE:
+                # Eval path: produce clean OAI content for lm-eval.
+                # Do NOT add non-standard fields (reasoning_content) that lm-eval
+                # doesn't understand and that can confuse downstream scoring.
+
+                # Strip embedded <think>...</think> block from content.
+                # vLLM may return the full generation (thinking + answer) in the
+                # content field; keep only the answer part.
+                if "<think>" in content:
+                    _, answer = split_thinking(content)
+                    if config.VERBOSE:
+                        log.info("eval-mode: stripped <think> block from content (%d→%d chars)",
+                                 len(content), len(answer))
+                    msg["content"] = answer
+                    content = answer
+                    fixed = True
+
+                # Profile strategy: copy reasoning_content → content when null.
                 if profile.copy_reasoning_to_content and not msg.get("content"):
                     thinking = msg.get("reasoning_content") or msg.get("reasoning") or ""
                     if thinking:
                         msg["content"] = thinking
+                        content = thinking
                         fixed = True
                         if config.VERBOSE:
                             log.info("eval-mode: copied reasoning_content → content")
 
                 # Profile strategy: strip code fences so lm-eval filter assembles
-                # the full function correctly (doc["prompt"] + bare_body)
+                # the full function correctly (doc["prompt"] + bare_body).
+                # Only fires when response *starts* with a fence — using find("```")
+                # was causing false positives on responses that contain ``` inside
+                # docstrings but have no outer fence wrapping.
                 if profile.strip_code_fences:
                     content = msg.get("content") or ""
                     if content.startswith("```"):
@@ -108,13 +129,26 @@ async def chat_completions(request: Request) -> Response:
                         if config.VERBOSE:
                             log.info("eval-mode: stripped code fence (%d→%d chars)", len(content), len(bare))
 
-            if fixed:
-                resp_body = json.dumps(resp_data).encode()
-                resp_headers = dict(response_headers(resp.headers))
-                resp_headers["content-length"] = str(len(resp_body))
-                return Response(content=resp_body, status_code=resp.status_code, headers=resp_headers)
-        except Exception:
-            pass  # fall through to normal response on parse error
+            else:
+                # Non-eval (CC) path: split <think>...</think> out of content and
+                # populate reasoning_content so CC clients see a clean separation.
+                if "<think>" in content:
+                    thinking, answer = split_thinking(content)
+                    msg["content"] = answer
+                    if not msg.get("reasoning_content"):
+                        msg["reasoning_content"] = thinking
+                    fixed = True
+                    if config.VERBOSE:
+                        log.info("split <think> block from content (%d thinking, %d answer chars)",
+                                 len(thinking), len(answer))
+
+        if fixed:
+            resp_body = json.dumps(resp_data).encode()
+            resp_headers = dict(response_headers(resp.headers))
+            resp_headers["content-length"] = str(len(resp_body))
+            return Response(content=resp_body, status_code=resp.status_code, headers=resp_headers)
+    except Exception:
+        pass  # fall through to normal response on parse error
 
     return Response(
         content=resp.content,

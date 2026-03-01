@@ -14,6 +14,14 @@ STRIP_DATE: bool = False
 VERBOSE: bool = False
 DUMP_DIR: Optional[Path] = None
 
+# ── Thinking / agentic settings ───────────────────────────────────────────────
+# Preserved Thinking: injects {"enable_thinking": true, "clear_thinking": false}
+# into /v1/messages (CC) requests so the model retains its reasoning chain across
+# turns. "clear_thinking": false keeps <think>...</think> in assistant history
+# instead of replacing it with </think>. SGLang only; vLLM ignores clear_thinking
+# but the flag is harmless to send.
+PRESERVED_THINKING: bool = False
+
 # ── Eval-mode settings ────────────────────────────────────────────────────────
 EVAL_MODE: bool = False
 EVAL_MAX_TOKENS: int = 0       # 0 = no cap (let vLLM use model default)

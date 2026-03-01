@@ -19,11 +19,13 @@ PORT=${PORT:-30001}
 STRIP_DATE=${STRIP_DATE:-0}
 VERBOSE=${VERBOSE:-0}
 DUMP_DIR=${DUMP_DIR:-${HOME}/mllm/prompt-diffs}
+PRESERVED_THINKING=${PRESERVED_THINKING:-1}   # 1 = Preserved Thinking (enable_thinking=true, clear_thinking=false)
 
 EXTRA_FLAGS=""
-[[ "${STRIP_DATE}" == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --strip-date"
-[[ "${VERBOSE}"     == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --verbose"
-[[ -n "${DUMP_DIR}"       ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --dump-dir ${DUMP_DIR}"
+[[ "${STRIP_DATE}"          == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --strip-date"
+[[ "${VERBOSE}"             == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --verbose"
+[[ -n "${DUMP_DIR}"               ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --dump-dir ${DUMP_DIR}"
+[[ "${PRESERVED_THINKING}"  == "1" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --preserved-thinking"
 
 echo "buster-ripper → ${UPSTREAM}  listening on ${HOST}:${PORT}"
 

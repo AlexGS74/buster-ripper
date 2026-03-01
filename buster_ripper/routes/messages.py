@@ -21,6 +21,19 @@ async def proxy_messages(request: Request) -> Response:
     body = await request.json()
     body, changes = normalize(body)
 
+    # Inject preserved-thinking kwargs so the model retains its reasoning chain
+    # across turns. clear_thinking=false keeps <think> blocks in assistant history
+    # (SGLang only; vLLM ignores clear_thinking but accepting the field is harmless).
+    if config.PRESERVED_THINKING:
+        kwargs = body.setdefault("chat_template_kwargs", {})
+        kwargs.setdefault("enable_thinking", True)
+        kwargs.setdefault("clear_thinking", False)
+        if config.VERBOSE:
+            import logging
+            logging.getLogger("buster-ripper").info(
+                "preserved-thinking: injected enable_thinking=true clear_thinking=false"
+            )
+
     if changes and config.VERBOSE:
         import logging
         logging.getLogger("buster-ripper").info("normalized: %s", "; ".join(changes))

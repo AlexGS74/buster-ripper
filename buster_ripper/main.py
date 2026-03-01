@@ -34,6 +34,10 @@ from .app import app
                    "Set to 1.0 to disable.")
 @click.option("--stats-db", metavar="PATH", default=None,
               help="SQLite file for session stats persistence across restarts.")
+@click.option("--preserved-thinking", is_flag=True,
+              help="Inject enable_thinking=true + clear_thinking=false into /v1/messages requests. "
+                   "Keeps the model's reasoning chain visible across turns (Preserved Thinking). "
+                   "clear_thinking=false is SGLang-only; harmless to send to vLLM.")
 @click.option("--eval-mode", is_flag=True,
               help="Eval proxy mode for lm-evaluation-harness: drops max_gen_toks, strips empty "
                    "auth, applies --eval-profile strategies.")
@@ -51,12 +55,14 @@ from .app import app
 def main(
     upstream, host, port, strip_date, verbose, dump_dir,
     max_model_len, compact_token_ratio, compact_latency_ms, compact_kv_ratio,
-    stats_db, eval_mode, eval_profile, eval_max_tokens, eval_thinking, eval_thinking_budget,
+    stats_db, preserved_thinking,
+    eval_mode, eval_profile, eval_max_tokens, eval_thinking, eval_thinking_budget,
 ):
     """buster-ripper — Anthropic /v1/messages normalizing proxy for vLLM prefix-cache stability."""
     config.UPSTREAM = upstream
     config.STRIP_DATE = strip_date
     config.VERBOSE = verbose
+    config.PRESERVED_THINKING = preserved_thinking
     config.MAX_MODEL_LEN = max_model_len
     config.COMPACT_TOKEN_RATIO = compact_token_ratio
     config.COMPACT_LATENCY_MS = compact_latency_ms
@@ -87,8 +93,9 @@ def main(
     log = logging.getLogger("buster-ripper")
     log.info("Listening on %s:%d → upstream %s", host, port, upstream)
     log.info(
-        "Tool sorting: enabled | Date stripping: %s | Dump dir: %s | Eval mode: %s",
+        "Tool sorting: enabled | Date stripping: %s | Preserved thinking: %s | Dump dir: %s | Eval mode: %s",
         "enabled" if strip_date else "disabled",
+        "enabled (enable_thinking=true, clear_thinking=false)" if preserved_thinking else "disabled",
         config.DUMP_DIR or "disabled",
         f"enabled (profile={eval_profile}, max_tokens={eval_max_tokens}, "
         f"thinking={'on' if eval_thinking else 'off'})" if eval_mode else "disabled",

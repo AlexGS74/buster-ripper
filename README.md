@@ -208,7 +208,9 @@ Claude Code  →  buster-ripper (:30001)  →  vLLM (:30000)
               /v1/messages/count_tokens:
                       └─ synthesize response; nudge if thresholds exceeded
               /v1/chat/completions:
-                      └─ eval-mode: strip max_gen_toks, apply model profile
+                      ├─ eval-mode: strip max_gen_toks, strip <think> blocks (OAI format)
+                      ├─ eval-mode: apply model profile strategies
+                      └─ non-eval: split <think> → reasoning_content (CC format)
               everything else:
                       └─ transparent passthrough
 ```

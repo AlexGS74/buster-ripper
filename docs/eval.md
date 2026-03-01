@@ -65,7 +65,7 @@ uvx lm_eval run \
 | `--eval-profile NAME` | `passthrough` | Model profile to apply (see below). |
 | `--eval-max-tokens N` | 0 (no cap) | Inject `max_tokens=N` into requests. Prevents runaway generation. 4096 is safe for HumanEval/MBPP. |
 | `--eval-thinking` | off | Pass `enable_thinking=true` via `chat_template_kwargs`. Requires a profile with `inject_chat_template_kwargs`. |
-| `--eval-thinking-budget N` | 0 (unlimited) | Cap thinking tokens. Parsed but not yet injected — reserved for future use. |
+| `--eval-thinking-budget N` | 0 (unlimited) | Cap thinking tokens via `chat_template_kwargs.thinking_budget`. 0 = unlimited. Requires `--eval-thinking` and a profile with `inject_chat_template_kwargs`. |
 
 ---
 
@@ -97,6 +97,27 @@ PROFILES: dict[str, ModelProfile] = {
 ```
 
 The new profile name is immediately available as `--eval-profile qwen`.
+
+---
+
+## Response format: eval vs CC
+
+The `/v1/chat/completions` route handles responses differently depending on
+whether eval mode is active.
+
+**Eval mode (lm-eval):** Keeps a clean standard OAI response. Only `content` is
+modified. No non-standard fields (e.g. `reasoning_content`) are added, as
+lm-eval reads only `content` for scoring.
+
+- If vLLM embeds `<think>...</think>` in the content field (e.g. model version
+  that doesn't split thinking automatically), buster-ripper strips the block and
+  keeps only the text after `</think>`.
+- Profile strategies (`copy_reasoning_to_content`, `strip_code_fences`) then run
+  on the cleaned content.
+
+**Non-eval mode (CC / Claude Code):** Full thinking split — `<think>...</think>`
+is extracted from content and placed into `reasoning_content` so Claude Code
+clients see a properly separated response.
 
 ---
 
@@ -147,10 +168,14 @@ Since the response **starts** with ` ``` `, `r.find("```") == 0` and
 executes just the function signature with no body, every test fails, and
 `pass@1 = 0%`.
 
-**Fix:** When the response content starts with ` ``` `, extract the code
-between the opening and closing fence and return just the bare code. The filter
-then correctly assembles `doc["prompt"] + bare_body` = a complete, executable
+**Fix:** When content **starts with** ` ``` `, extract the code between the
+opening and closing fence and return just the bare code. The filter then
+correctly assembles `doc["prompt"] + bare_body` = a complete, executable
 function.
+
+Only fires on `startswith("```")` — using `find("```")` (anywhere) caused
+false positives when the model returns bare code that contains triple backticks
+inside a docstring, incorrectly extracting from inside the docstring.
 
 ```
 Response content (before): "```python\n    numbers.sort()\n    ...\n```"
@@ -159,13 +184,23 @@ Response content (after):  "    numbers.sort()\n    ..."
 
 ### 3. `copy_reasoning_to_content`
 
-**Problem:** When `enable_thinking=true`, vLLM puts the thinking tokens in
-`message.reasoning_content` and the final answer in `message.content`. If the
-model generates a very long think block and the content is empty or null, lm-eval
+**Problem:** When `enable_thinking=true`, vLLM may separate the thinking tokens
+into `message.reasoning_content` and put the final answer (possibly empty) in
+`message.content`. If the model's final answer section is empty or null, lm-eval
 scores an empty response.
 
 **Fix:** If `content` is null/empty after generation, copy `reasoning_content`
-into `content` so lm-eval can score the answer.
+(the full thinking blob) into `content`. The `strip_code_fences` strategy then
+extracts the code from within it.
+
+Full pipeline when thinking is enabled and vLLM separates thinking:
+```
+1. vLLM returns:      reasoning_content="Let me analyze...\n```python\ncode```"
+                      content=""
+2. copy_reasoning:    content="Let me analyze...\n```python\ncode```"
+3. strip_code_fences: content="code"
+4. lm-eval scores:    code ✓
+```
 
 ---
 
@@ -189,8 +224,8 @@ This is already the default in `eval_glm47.sh` (`REPETITION_PENALTY=1.05`).
 |---|---|---|
 | Speed | Fast (~30s for 164 HumanEval) | Slow (model reasons before each answer) |
 | Hang risk | Low | Higher — complex problems generate long think blocks |
-| HumanEval score | ~44% | Potentially higher (model reasons through edge cases) |
-| Recommended for | Quick iteration, MBPP, GSM8K | Full HumanEval benchmark runs |
+| HumanEval pass@1 | ~43.9% (matches official ~42.8%) | 0% — model generates prose instead of code |
+| Recommended for | All tasks — use this | Avoid: generates prose not code in the fewshot-multiturn eval format |
 
 ---
 

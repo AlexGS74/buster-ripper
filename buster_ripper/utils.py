@@ -38,6 +38,30 @@ def extract_input_tokens(response_body: bytes) -> Optional[int]:
         return None
 
 
+def split_thinking(content: str) -> tuple[str, str]:
+    """Parse a <think>...</think> block out of raw content.
+
+    Some models (e.g. GLM-4.7 with enable_thinking=true) return the full
+    generation in the content field:
+        <think>reasoning text</think>actual answer
+    vLLM may or may not split this into reasoning_content + content depending
+    on the version and model. This function normalizes it so callers always get
+    a clean (thinking, answer) pair regardless of what vLLM did.
+
+    Returns (thinking, answer):
+      - thinking: text inside the first <think>...</think> block, or ""
+      - answer:   everything after </think>, stripped of leading whitespace,
+                  or the full content unchanged if no <think> block is found
+    """
+    open_tag = content.find("<think>")
+    close_tag = content.find("</think>")
+    if open_tag == -1 or close_tag == -1 or close_tag < open_tag:
+        return "", content
+    thinking = content[open_tag + len("<think>"):close_tag]
+    answer = content[close_tag + len("</think>"):].lstrip("\n")
+    return thinking, answer
+
+
 def find_message_start(chunk: bytes) -> Optional[dict]:
     """Scan an SSE chunk for a 'message_start' event. Returns parsed dict or None.
 
