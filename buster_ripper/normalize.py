@@ -95,4 +95,41 @@ def normalize(body: dict) -> tuple[dict, list[str]]:
                             block["text"] = _DATE_RE.sub("", block["text"])
                             changes.append("stripped currentDate from user content block")
 
+    # 4. Replace content block types the upstream rejects. Local engines without
+    #    server-side tool search / retrieval can't resolve these payloads anyway,
+    #    so they become a stable text note (stable string = KV-cache friendly).
+    #    Seen: tool_reference (Claude Code tool search) nested inside
+    #    tool_result.content -> 400 "DeepSeek V4.1 supports text and image
+    #    content only; got 'tool_reference'".
+    _UNSUPPORTED_BLOCK_TYPES = {"tool_reference", "document", "search_result"}
+
+    def _scrub(blocks):
+        n = 0
+        for i, block in enumerate(blocks):
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") in _UNSUPPORTED_BLOCK_TYPES:
+                blocks[i] = {"type": "text", "text": f"[{block.get('type')} block omitted]"}
+                n += 1
+            elif block.get("type") == "tool_result" and isinstance(block.get("content"), list):
+                n += _scrub(block["content"])
+        return n
+
+    if isinstance(body.get("messages"), list):
+        replaced = 0
+        for msg in body["messages"]:
+            content = msg.get("content")
+            if isinstance(content, list):
+                replaced += _scrub(content)
+        if replaced:
+            changes.append(f"replaced {replaced} unsupported content block(s) with text note")
+
+    # 5. Canonicalize the model id: any client-side name ("sloppus", lowercase
+    #    variants, leftovers from a previous engine) maps to the one model the
+    #    upstream actually serves.
+    canonical = config.UPSTREAM_MODEL
+    if isinstance(body.get("model"), str) and body["model"] != canonical:
+        changes.append(f"model alias: {body['model']} -> {canonical}")
+        body["model"] = canonical
+
     return body, changes

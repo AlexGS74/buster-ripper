@@ -18,7 +18,7 @@ HOST=${HOST:-0.0.0.0}
 PORT=${PORT:-30001}
 STRIP_DATE=${STRIP_DATE:-0}
 VERBOSE=${VERBOSE:-0}
-DUMP_DIR=${DUMP_DIR:-${HOME}/mllm/prompt-diffs}
+DUMP_DIR=${DUMP_DIR-/data/buster-dumps}   # unset → default; DUMP_DIR="" → dumps off
 PRESERVED_THINKING=${PRESERVED_THINKING:-1}   # 1 = Preserved Thinking (enable_thinking=true, clear_thinking=false)
 
 EXTRA_FLAGS=""
@@ -33,4 +33,5 @@ exec buster-ripper \
   --upstream "${UPSTREAM}" \
   --host     "${HOST}" \
   --port     "${PORT}" \
-  ${EXTRA_FLAGS}
+  ${EXTRA_FLAGS} \
+  "$@"   # forwarded CLI args; repeated flags (e.g. --upstream) win over the env default

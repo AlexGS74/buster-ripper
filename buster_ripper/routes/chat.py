@@ -36,6 +36,18 @@ async def chat_completions(request: Request) -> Response:
     profile = config.EVAL_PROFILE
 
     # ── Request transforms ────────────────────────────────────────────────────
+    # Model-agnostic: canonicalize the model id so client-side aliases
+    # ("sloppus", lowercase variants) resolve like they do on /v1/messages.
+    if body:
+        try:
+            data = json.loads(body)
+            if isinstance(data.get("model"), str) and data["model"] != config.UPSTREAM_MODEL:
+                data["model"] = config.UPSTREAM_MODEL
+                body = json.dumps(data).encode()
+                headers["content-length"] = str(len(body))
+        except Exception:
+            pass  # leave body untouched on parse error
+
     if config.EVAL_MODE and body:
         try:
             data = json.loads(body)

@@ -10,6 +10,10 @@ from typing import Optional
 
 # ── Core proxy settings ───────────────────────────────────────────────────────
 UPSTREAM: str = "http://localhost:30000"
+# Canonical model id the upstream serves. Requests for any other model name
+# ("sloppus", lowercase variants, stale client config) are rewritten to this,
+# so aliases are free and switching engines never breaks client config.
+UPSTREAM_MODEL: str = "DeepSeek-V4.1-Flash"
 STRIP_DATE: bool = False
 VERBOSE: bool = False
 DUMP_DIR: Optional[Path] = None
