@@ -124,12 +124,4 @@ def normalize(body: dict) -> tuple[dict, list[str]]:
         if replaced:
             changes.append(f"replaced {replaced} unsupported content block(s) with text note")
 
-    # 5. Canonicalize the model id: any client-side name ("sloppus", lowercase
-    #    variants, leftovers from a previous engine) maps to the one model the
-    #    upstream actually serves.
-    canonical = config.UPSTREAM_MODEL
-    if isinstance(body.get("model"), str) and body["model"] != canonical:
-        changes.append(f"model alias: {body['model']} -> {canonical}")
-        body["model"] = canonical
-
     return body, changes
