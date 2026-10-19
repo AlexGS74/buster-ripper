@@ -1,0 +1,101 @@
+CR2 WAVE (T015 + T016) — untouched-surface proof, LNCP census, and run counts
+wave base 1c84ebd (Checkpoint 163) · extraction commit a4d1d26 (Checkpoint 164) · generated 2026-10-06T18:22:32Z
+
+=== 1. Blueprint foreclosures vs 1c84ebd, by AST (each function re-serialized and compared) ===
+chat.py: must-not-move held=11/11 VIOLATIONS=[]
+  expected-moved changed=['_make_chat_request', '_apply_response_transforms']
+  not changed=[]
+  added=['_chat_answer', '_chat_response'] removed=[]
+messages.py: must-not-move held=3/4 VIOLATIONS=['_note_message_start']
+  expected-moved changed=['handle_messages', '_stream_single_request', '_non_stream_single_request']
+  not changed=[]
+  added=['_inject_preserved_thinking'] removed=[]
+passthrough.py: must-not-move held=0/0 VIOLATIONS=[]
+  expected-moved changed=['handle_passthrough']
+  not changed=[]
+  added=[] removed=[]
+
+  chat.py's 11: handle_chat, _apply_request_transforms, _prepare_headers, _carries_token,
+  _relay_chat_stream, _raise_chat_overflow, _strip_think_block, _copy_reasoning_to_content,
+  _strip_code_fence, _transform_eval_response, _transform_cc_response.
+  messages.py's 4: _relay_after_commit, _note_message_start, handle_streaming, handle_non_streaming.
+
+=== 2. Raw file sizes (FL-LNCP: <=300 green, 301-500 review, 501-700 must extract) ===
+     300 buster_ripper/routes/chat.py
+     299 buster_ripper/routes/messages.py
+      56 buster_ripper/routes/passthrough.py
+     467 tests/test_routes_integration.py
+     360 tests/test_header_parity.py
+     307 tests/test_upstream_answer_relay.py
+    1789 total
+wave base chat/messages/passthrough: 299/293/53
+wave base test_routes_integration/test_header_parity: 461/355
+
+=== 3. LNCP after (codify scan path <file> --git --detailed) ===
+--- buster_ripper/routes/chat.py
+Summary: 2 total issues found in 2 functions
+_apply_response_transforms (target)
+L:14 N:2 C:6
+    │   L:10 N:2 C:4
+    │   L:15 N:2 C:7
+_make_chat_request (target)
+L:14 N:2 C:3
+--- buster_ripper/routes/messages.py
+Summary: 7 total issues found in 2 functions
+_non_stream_single_request (target)
+L:33 N:4 C:8
+_stream_single_request (target)
+L:30 N:2 C:3
+        L:9 N:1 C:3
+--- buster_ripper/routes/passthrough.py
+Summary: 1 total issues found in 1 functions
+handle_passthrough (target)
+L:26 N:1 C:2
+
+=== 4. LNCP at 1c84ebd (base bytes, same files) ===
+--- chat.py
+handle_chat (target)
+L:29 N:2 C:6
+    │   L:20 N:2 C:8
+    │   L:18 N:2 C:4
+_apply_response_transforms (target)
+L:24 N:2 C:6
+    │   L:10 N:2 C:4
+        L:15 N:2 C:7
+_apply_request_transforms (target)
+L:20 N:2 C:8
+_make_chat_request (target)
+L:18 N:2 C:4
+    │   L:24 N:2 C:6
+    │   L:7 N:2 C:4
+_transform_eval_response (target)
+L:15 N:2 C:7
+--- messages.py
+_non_stream_single_request (target)
+L:33 N:4 C:8
+handle_messages (target)
+L:30 N:2 C:11
+    │   L:25 N:3 C:8
+        L:21 N:2 C:5
+handle_streaming (target)
+L:25 N:3 C:8
+        L:30 N:2 C:3
+_stream_single_request (target)
+L:30 N:2 C:3
+        L:9 N:1 C:3
+handle_non_streaming (target)
+L:21 N:2 C:5
+        L:33 N:4 C:8
+--- passthrough.py
+handle_passthrough (target)
+L:25 N:1 C:2
+
+=== 5. Full hermetic suite (checkpoint run) ===
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+439 passed, 24 warnings in 8.98s
+
+=== 6. Full hermetic suite (T015/T016 done-when clause; Yield re-runs independently) ===
+TOTAL                           635     27    96%
+Required test coverage of 80% reached. Total coverage: 95.75%
+439 passed, 22 warnings in 9.29s

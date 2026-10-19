@@ -1,0 +1,594 @@
+== HEAD (wave base) ==
+d5df8b06
+
+== PRE-FIX BYTES (production reverted to HEAD; witnesses unchanged) ==
+FFFFFFF.....................F......F...................................F [ 73%]
+FFFF......................                                               [100%]
+=================================== FAILURES ===================================
+_ TestNoRequestBodyCap.test_a_two_mebibyte_body_reaches_the_upstream[messages] _
+
+self = <tests.test_transport_parity.TestNoRequestBodyCap object at 0x109572210>
+proxy = <aiohttp.test_utils.TestClient object at 0x10970c980>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10958aba0>
+case = ('/v1/messages', {'json': {'max_tokens': 10, 'messages': [{'content': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'role': 'user'}], 'model': 'm'}}, 'post')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param(("/v1/messages", {"json": _MESSAGES}, "post"), id="messages"),
+        pytest.param(("/v1/chat/completions", {"json": _CHAT}, "post"), id="chat-completions"),
+        pytest.param(("/v1/models", {"data": _PASSTHROUGH}, "request"),
+                     id="passthrough-catch-all"),
+    ])
+    async def test_a_two_mebibyte_body_reaches_the_upstream(self, proxy, mocker, case):
+        """Red at pre-fix bytes as a 413 out of aiohttp's reader, before any handler
+        ran: the cap is the application's, so it is one construction site to change."""
+        path, kwargs, method = case
+        sent = mocker.patch.object(
+            proxy.server.app["session"], method,
+            return_value=StubUpstream(body=_ANSWER, headers=_JSON))
+    
+        response = await proxy.request("POST", path, **kwargs)
+    
+>       assert response.status == 200, "the app answered for the body size"
+E       AssertionError: the app answered for the body size
+E       assert 413 == 200
+E        +  where 413 = <ClientResponse(http://127.0.0.1:50761/v1/messages) [413 Content Too Large]>\n<CIMultiDictProxy('Content-Type': 'text/p...rset=utf-8', 'Content-Length': '68', 'Date': 'Wed, 07 Oct 2026 01:10:49 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+
+tests/test_transport_parity.py:123: AssertionError
+_ TestNoRequestBodyCap.test_a_two_mebibyte_body_reaches_the_upstream[chat-completions] _
+
+self = <tests.test_transport_parity.TestNoRequestBodyCap object at 0x1095725d0>
+proxy = <aiohttp.test_utils.TestClient object at 0x1096a0910>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10961dd10>
+case = ('/v1/chat/completions', {'json': {'messages': [{'content': 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'role': 'user'}], 'model': 'm'}}, 'post')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param(("/v1/messages", {"json": _MESSAGES}, "post"), id="messages"),
+        pytest.param(("/v1/chat/completions", {"json": _CHAT}, "post"), id="chat-completions"),
+        pytest.param(("/v1/models", {"data": _PASSTHROUGH}, "request"),
+                     id="passthrough-catch-all"),
+    ])
+    async def test_a_two_mebibyte_body_reaches_the_upstream(self, proxy, mocker, case):
+        """Red at pre-fix bytes as a 413 out of aiohttp's reader, before any handler
+        ran: the cap is the application's, so it is one construction site to change."""
+        path, kwargs, method = case
+        sent = mocker.patch.object(
+            proxy.server.app["session"], method,
+            return_value=StubUpstream(body=_ANSWER, headers=_JSON))
+    
+        response = await proxy.request("POST", path, **kwargs)
+    
+>       assert response.status == 200, "the app answered for the body size"
+E       AssertionError: the app answered for the body size
+E       assert 413 == 200
+E        +  where 413 = <ClientResponse(http://127.0.0.1:50764/v1/chat/completions) [413 Content Too Large]>\n<CIMultiDictProxy('Content-Type':...rset=utf-8', 'Content-Length': '68', 'Date': 'Wed, 07 Oct 2026 01:10:49 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+
+tests/test_transport_parity.py:123: AssertionError
+_ TestNoRequestBodyCap.test_a_two_mebibyte_body_reaches_the_upstream[passthrough-catch-all] _
+
+self = <tests.test_transport_parity.TestNoRequestBodyCap object at 0x1095689d0>
+proxy = <aiohttp.test_utils.TestClient object at 0x1096a1e50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10961e710>
+case = ('/v1/models', {'data': b'payload=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}, 'request')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param(("/v1/messages", {"json": _MESSAGES}, "post"), id="messages"),
+        pytest.param(("/v1/chat/completions", {"json": _CHAT}, "post"), id="chat-completions"),
+        pytest.param(("/v1/models", {"data": _PASSTHROUGH}, "request"),
+                     id="passthrough-catch-all"),
+    ])
+    async def test_a_two_mebibyte_body_reaches_the_upstream(self, proxy, mocker, case):
+        """Red at pre-fix bytes as a 413 out of aiohttp's reader, before any handler
+        ran: the cap is the application's, so it is one construction site to change."""
+        path, kwargs, method = case
+        sent = mocker.patch.object(
+            proxy.server.app["session"], method,
+            return_value=StubUpstream(body=_ANSWER, headers=_JSON))
+    
+        response = await proxy.request("POST", path, **kwargs)
+    
+>       assert response.status == 200, "the app answered for the body size"
+E       AssertionError: the app answered for the body size
+E       assert 413 == 200
+E        +  where 413 = <ClientResponse(http://127.0.0.1:50768/v1/models) [413 Content Too Large]>\n<CIMultiDictProxy('Content-Type': 'text/pla...rset=utf-8', 'Content-Length': '68', 'Date': 'Wed, 07 Oct 2026 01:10:49 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+
+tests/test_transport_parity.py:123: AssertionError
+_ TestNoRequestBodyCap.test_count_tokens_reads_a_two_mebibyte_body_it_never_forwards _
+
+self = <tests.test_transport_parity.TestNoRequestBodyCap object at 0x109568fc0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10965f950>
+
+    async def test_count_tokens_reads_a_two_mebibyte_body_it_never_forwards(self, proxy):
+        """The fourth route class answers from its own body, so its read path shows up as
+        a token estimate rather than as an upstream call."""
+        response = await proxy.post("/v1/messages/count_tokens",
+                                    json=dict(_CHAT, max_tokens=10))
+    
+>       assert response.status == 200, "the app answered for the body size"
+E       AssertionError: the app answered for the body size
+E       assert 413 == 200
+E        +  where 413 = <ClientResponse(http://127.0.0.1:50772/v1/messages/count_tokens) [413 Content Too Large]>\n<CIMultiDictProxy('Content-T...rset=utf-8', 'Content-Length': '68', 'Date': 'Wed, 07 Oct 2026 01:10:49 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+
+tests/test_transport_parity.py:132: AssertionError
+_ TestNoRequestBodyCap.test_a_strip_images_body_over_the_cap_reaches_the_image_handler _
+
+self = <tests.test_transport_parity.TestNoRequestBodyCap object at 0x1095a2570>
+proxy = <aiohttp.test_utils.TestClient object at 0x1097c90f0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10965ed70>
+
+    async def test_a_strip_images_body_over_the_cap_reaches_the_image_handler(
+        self, proxy, mocker
+    ):
+        """The cap sat *ahead* of the feature that shrinks this very body: with
+        ``--strip-images`` on, an image-bearing request over 1 MiB was refused before one
+        image byte could be moved out of what the proxy forwards."""
+        mocker.patch.object(config, "STRIP_IMAGES", True)
+        stripped = mocker.patch.object(image_handler, "strip_and_cache_images")
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(body=_ANSWER, headers=_JSON))
+        body = dict(_MESSAGES, messages=[{
+            "role": "user",
+            "content": [{"type": "image", "source": {
+                "type": "base64", "media_type": "image/png", "data": _HUGE}}],
+        }])
+    
+        response = await proxy.post("/v1/messages", json=body)
+    
+>       assert response.status == 200, "the cap still answers before the handler reads"
+E       AssertionError: the cap still answers before the handler reads
+E       assert 413 == 200
+E        +  where 413 = <ClientResponse(http://127.0.0.1:50776/v1/messages) [413 Content Too Large]>\n<CIMultiDictProxy('Content-Type': 'text/p...rset=utf-8', 'Content-Length': '68', 'Date': 'Wed, 07 Oct 2026 01:10:49 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+
+tests/test_transport_parity.py:153: AssertionError
+_ TestStreamCarriesNoDeadline.test_a_stream_outliving_the_shared_deadline_arrives_whole _
+
+self = <tests.test_transport_parity.TestStreamCarriesNoDeadline object at 0x109572990>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10963e9f0>
+raw_proxy = <tests.conftest.RawProxy object at 0x1097c52b0>
+
+    async def test_a_stream_outliving_the_shared_deadline_arrives_whole(self, mocker,
+                                                                        raw_proxy):
+        """Before: the deadline fired inside the payload read, the swallow ate it, and the
+        caller was left with a 200 whose body simply stopped. After: the terminal is there,
+        because nothing is armed on this call."""
+        response, _ = await self._relay(mocker, raw_proxy, deadline=0.1, stall=0.4)
+        raw = response.raw
+    
+        assert _status_lines(raw) == [b"HTTP/1.1 200 OK"]
+        assert _SSE_START in raw, "the stream never even started"
+>       assert _SSE_DONE in raw, "the shared session's deadline cut the relay mid-body"
+E       AssertionError: the shared session's deadline cut the relay mid-body
+E       assert b'data: [DONE]\n\n' in b'HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nX-Accel-Buffering: no\r\nConnection....13 aiohttp/3.13.3\r\n\r\n47\r\ndata: {"type":"message_start","message":{"usage":{"input_tokens":7}}}\n\n\r\n0\r\n\r\n'
+
+tests/test_transport_parity.py:188: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:messages.py:195 Post-commit relay error (TimeoutError): 
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/tests/test_transport_parity.py", line 68, in handle
+    await resp.write(_SSE_DONE)
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_response.py", line 560, in write
+    await self._payload_writer.write(data)
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/http_writer.py", line 202, in write
+    self._write_chunked_payload(chunk)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/http_writer.py", line 117, in _write_chunked_payload
+    self._writelines((chunk_len_pre, chunk, b"\r\n"))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/http_writer.py", line 106, in _writelines
+    raise ClientConnectionResetError("Cannot write to closing transport")
+aiohttp.client_exceptions.ClientConnectionResetError: Cannot write to closing transport
+_ TestStreamCarriesNoDeadline.test_the_streaming_call_passes_a_timeout_with_nothing_armed _
+
+self = <tests.test_transport_parity.TestStreamCarriesNoDeadline object at 0x109572ad0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x1097bb020>
+raw_proxy = <tests.conftest.RawProxy object at 0x1096a3610>
+
+    async def test_the_streaming_call_passes_a_timeout_with_nothing_armed(self, mocker,
+                                                                         raw_proxy):
+        """All four components unset, not merely a ``total`` that looks unlimited: the
+        request-local object replaces the session's wholesale, so a spelling that
+        re-inherited ``total`` — or armed ``sock_read`` "to be safe" — would pass the
+        truncation witness above while leaving the class the arm cannot catch still armed.
+        """
+        response, post = await self._relay(mocker, raw_proxy, deadline=0.1, stall=0.05,
+                                           spy=True)
+    
+        assert _SSE_DONE in response.raw, "the operand under test did not relay to the end"
+>       operand = post.call_args.kwargs["timeout"]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'timeout'
+
+tests/test_transport_parity.py:203: KeyError
+_ TestCountTokensRoute.test_a_billing_nonce_body_finds_the_stats_messages_recorded _
+
+self = <tests.test_routes_integration.TestCountTokensRoute object at 0x109573250>
+client = <aiohttp.test_utils.TestClient object at 0x10989ea50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10976d570>
+
+    async def test_a_billing_nonce_body_finds_the_stats_messages_recorded(self, client,
+                                                                          mocker):
+        """``CR3-F-02``: ``/v1/messages`` records stats under the post-normalize digest
+        while count_tokens looked the raw one up, so the nonce that changes on every
+        request made the lookup miss on every documented-client call."""
+        from buster_ripper import session as session_mod
+    
+        mocker.patch.dict(session_mod._stats, {}, clear=True)
+        answer = json.dumps({"id": "m", "usage": {"input_tokens": 1234}}).encode()
+        mocker.patch.object(client.server.app["session"], "post", return_value=StubUpstream(
+            body=answer, headers={"Content-Type": "application/json"}))
+        body = {
+            "model": "test", "max_tokens": 100,
+            "system": [{"type": "text", "text": "x-anthropic-billing-header: cc_version=2.1.50\nsys"}],
+            "messages": [{"role": "user", "content": "Hello"}],
+        }
+    
+        assert (await client.post("/v1/messages", json=body)).status == 200
+        response = await client.post("/v1/messages/count_tokens", json=body)
+    
+>       assert await response.json() == {"input_tokens": 1234}, (
+            "count_tokens answered its own estimate: the stats lookup missed")
+E       AssertionError: count_tokens answered its own estimate: the stats lookup missed
+E       assert {'input_tokens': 45} == {'input_tokens': 1234}
+E         
+E         Differing items:
+E         {'input_tokens': 45} != {'input_tokens': 1234}
+E         Use -v to get more diff
+
+tests/test_routes_integration.py:300: AssertionError
+_ TestCountTokensRoute.test_count_tokens_inflates_on_compaction_trigger[per-session] _
+
+self = <tests.test_routes_integration.TestCountTokensRoute object at 0x1095d8e50>
+client = <aiohttp.test_utils.TestClient object at 0x10958c450>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x109779b20>, kv = 0.0
+latency = 20000
+
+    @pytest.mark.parametrize("kv, latency", [
+        pytest.param(0.85, 100, id="kv-pressure"),
+        pytest.param(0.0, 20_000, id="per-session"),
+    ])
+    async def test_count_tokens_inflates_on_compaction_trigger(self, client, mocker, kv,
+                                                               latency):
+        """Either arm alone inflates the count, and each case rules the other out.
+    
+        The seed is a real digest now — the literal that was here matched nothing, so the
+        stats path never ran and the row passed on the kv arm alone. ``per-session`` is the
+        branch that ordering defect made unreachable: with the lookup missing,
+        ``avg_latency`` stayed 0.0 no matter what the session had done. KV is at 0.0 there,
+        so a green cannot be another kv-forced pass.
+        """
+        from buster_ripper import session as session_mod, compaction
+    
+        body = {"model": "claude-3-5-sonnet-20241022",
+                "system": [{"type": "text", "text": "x-anthropic-billing-header: cc_version=2.1.50\nsys"}],
+                "messages": [{"role": "user", "content": "Test"}]}
+        mocker.patch.dict(session_mod._stats,
+                          {_sid(body): mocker.Mock(input_tokens=180_000,
+                                                   avg_latency_ms=latency)})
+        original_kv = compaction._kv_cache_usage
+        try:
+            compaction._kv_cache_usage = kv
+    
+            response = await client.post("/v1/messages/count_tokens", json=body)
+    
+            assert response.status == 200
+            nudged = int(config.MAX_MODEL_LEN * config.COMPACT_NUDGE_RATIO)
+>           assert await response.json() == {"input_tokens": nudged}
+E           AssertionError: assert {'input_tokens': 45} == {'input_tokens': 190000}
+E             
+E             Differing items:
+E             {'input_tokens': 45} != {'input_tokens': 190000}
+E             Use -v to get more diff
+
+tests/test_routes_integration.py:361: AssertionError
+_ TestUnknownClientCodecArm.test_the_unknown_codec_never_reaches_the_caller_as_a_500[messages] _
+
+self = <tests.test_upstream_answer_relay.TestUnknownClientCodecArm object at 0x10961c690>
+proxy = <aiohttp.test_utils.TestClient object at 0x109996ed0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x1099bdd90>
+path = '/v1/messages'
+
+    @pytest.mark.parametrize("path", [
+        pytest.param("/v1/messages", id="messages"),
+        pytest.param("/v1/chat/completions", id="chat-completions"),
+        pytest.param("/v1/messages/count_tokens", id="count-tokens"),
+    ])
+    async def test_the_unknown_codec_never_reaches_the_caller_as_a_500(self, proxy, mocker,
+                                                                       path):
+        """``web_request.py:689`` hands ``charset`` to ``bytes.decode()`` and that raises
+        ``LookupError`` — not a ``UnicodeDecodeError``, so no arm named it, the handler
+        never returned, and the caller got aiohttp's generated 500 with the traceback.
+        The route's body is well-formed here: what is broken is the name it arrived under,
+        which is why the two neighbouring arms (a syntax error, undecodable bytes) settle
+        it and this one escaped."""
+        upstream = mocker.patch.object(proxy.server.app["session"], "post",
+                                       return_value=StubUpstream(headers=_JUNK))
+    
+        response = await proxy.post(path, data=json.dumps(_MESSAGES).encode(),
+                                    headers={"Content-Type": _BAD_CODEC})
+    
+>       assert response.status == 400, f"{path} answered {response.status} for a codec name"
+E       AssertionError: /v1/messages answered 500 for a codec name
+E       assert 500 == 400
+E        +  where 500 = <ClientResponse(http://127.0.0.1:51051/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Wed, 07 Oct 2026 01:10:50 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:347: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 29, in handle_messages
+    body = await request.json()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_request.py", line 694, in json
+    body = await self.text()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_request.py", line 690, in text
+    return bytes_body.decode(encoding)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+LookupError: unknown encoding: x-not-a-real-codec
+_ TestUnknownClientCodecArm.test_the_unknown_codec_never_reaches_the_caller_as_a_500[chat-completions] _
+
+self = <tests.test_upstream_answer_relay.TestUnknownClientCodecArm object at 0x10961c7d0>
+proxy = <aiohttp.test_utils.TestClient object at 0x109996f50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x1099bec30>
+path = '/v1/chat/completions'
+
+    @pytest.mark.parametrize("path", [
+        pytest.param("/v1/messages", id="messages"),
+        pytest.param("/v1/chat/completions", id="chat-completions"),
+        pytest.param("/v1/messages/count_tokens", id="count-tokens"),
+    ])
+    async def test_the_unknown_codec_never_reaches_the_caller_as_a_500(self, proxy, mocker,
+                                                                       path):
+        """``web_request.py:689`` hands ``charset`` to ``bytes.decode()`` and that raises
+        ``LookupError`` — not a ``UnicodeDecodeError``, so no arm named it, the handler
+        never returned, and the caller got aiohttp's generated 500 with the traceback.
+        The route's body is well-formed here: what is broken is the name it arrived under,
+        which is why the two neighbouring arms (a syntax error, undecodable bytes) settle
+        it and this one escaped."""
+        upstream = mocker.patch.object(proxy.server.app["session"], "post",
+                                       return_value=StubUpstream(headers=_JUNK))
+    
+        response = await proxy.post(path, data=json.dumps(_MESSAGES).encode(),
+                                    headers={"Content-Type": _BAD_CODEC})
+    
+>       assert response.status == 400, f"{path} answered {response.status} for a codec name"
+E       AssertionError: /v1/chat/completions answered 500 for a codec name
+E       assert 500 == 400
+E        +  where 500 = <ClientResponse(http://127.0.0.1:51056/v1/chat/completions) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Ty...ength': '55', 'Date': 'Wed, 07 Oct 2026 01:10:50 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:347: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/chat.py", line 30, in handle_chat
+    body = await request.json()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_request.py", line 694, in json
+    body = await self.text()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_request.py", line 690, in text
+    return bytes_body.decode(encoding)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+LookupError: unknown encoding: x-not-a-real-codec
+_ TestUnknownClientCodecArm.test_the_unknown_codec_never_reaches_the_caller_as_a_500[count-tokens] _
+
+self = <tests.test_upstream_answer_relay.TestUnknownClientCodecArm object at 0x10956a650>
+proxy = <aiohttp.test_utils.TestClient object at 0x1099e79d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x1099bfd40>
+path = '/v1/messages/count_tokens'
+
+    @pytest.mark.parametrize("path", [
+        pytest.param("/v1/messages", id="messages"),
+        pytest.param("/v1/chat/completions", id="chat-completions"),
+        pytest.param("/v1/messages/count_tokens", id="count-tokens"),
+    ])
+    async def test_the_unknown_codec_never_reaches_the_caller_as_a_500(self, proxy, mocker,
+                                                                       path):
+        """``web_request.py:689`` hands ``charset`` to ``bytes.decode()`` and that raises
+        ``LookupError`` — not a ``UnicodeDecodeError``, so no arm named it, the handler
+        never returned, and the caller got aiohttp's generated 500 with the traceback.
+        The route's body is well-formed here: what is broken is the name it arrived under,
+        which is why the two neighbouring arms (a syntax error, undecodable bytes) settle
+        it and this one escaped."""
+        upstream = mocker.patch.object(proxy.server.app["session"], "post",
+                                       return_value=StubUpstream(headers=_JUNK))
+    
+        response = await proxy.post(path, data=json.dumps(_MESSAGES).encode(),
+                                    headers={"Content-Type": _BAD_CODEC})
+    
+>       assert response.status == 400, f"{path} answered {response.status} for a codec name"
+E       AssertionError: /v1/messages/count_tokens answered 500 for a codec name
+E       assert 500 == 400
+E        +  where 500 = <ClientResponse(http://127.0.0.1:51060/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 01:10:50 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:347: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 78, in handle_count_tokens
+    body = await _read_body(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 19, in _read_body
+    return await request.json()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_request.py", line 694, in json
+    body = await self.text()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_request.py", line 690, in text
+    return bytes_body.decode(encoding)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+LookupError: unknown encoding: x-not-a-real-codec
+_ TestUndecodableUpstreamAnswer.test_the_non_stream_probe_decodes_the_body_it_is_only_checking _
+
+self = <tests.test_upstream_answer_relay.TestUndecodableUpstreamAnswer object at 0x10961c910>
+proxy = <aiohttp.test_utils.TestClient object at 0x1099e5dd0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x109a1c460>
+
+    async def test_the_non_stream_probe_decodes_the_body_it_is_only_checking(self, proxy,
+                                                                            mocker):
+        """The probe parses text out of a body the relay then sends as bytes, so a strict
+        ``decode()`` here made undecodable bytes an argument the handler raised on its way
+        to forwarding them. The overflow text is ASCII, so it survives replacement."""
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=429, headers=_JUNK,
+                                                      body=_UNDECODABLE))
+    
+        response = await proxy.post("/v1/messages", json=_MESSAGES)
+    
+>       assert response.status == 429, "the proxy answered the upstream's payload with a 500"
+E       AssertionError: the proxy answered the upstream's payload with a 500
+E       assert 500 == 429
+E        +  where 500 = <ClientResponse(http://127.0.0.1:51064/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Wed, 07 Oct 2026 01:10:50 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:366: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 68, in handle_messages
+    return await handle_non_streaming(request, body, headers, sid)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 229, in handle_non_streaming
+    return await _non_stream_single_request(request, body, headers, sid)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 276, in _non_stream_single_request
+    overflow_err = parse_context_overflow_error(content.decode())
+                                                ~~~~~~~~~~~~~~^^
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+_ TestUndecodableUpstreamAnswer.test_a_stream_error_body_that_no_charset_can_decode_still_answers_itself _
+
+self = <tests.test_upstream_answer_relay.TestUndecodableUpstreamAnswer object at 0x10961ca50>
+proxy = <aiohttp.test_utils.TestClient object at 0x1099e64d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x1099bea90>
+
+    async def test_a_stream_error_body_that_no_charset_can_decode_still_answers_itself(
+        self, proxy, mocker
+    ):
+        """``text()`` is strict, and the live class on this path is ``UnicodeDecodeError``
+        — not a ``ClientError`` either, so ``_stream_single_request``'s single arm matched
+        nothing and the 502 this site declares was never produced. The fallback keeps the
+        shape the arm has always had: the upstream's status, and its payload with the
+        undecodable runs replaced."""
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=503, headers=_JUNK,
+                                                      body=_UNDECODABLE))
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES, "stream": True})
+    
+>       assert response.status == 503, "the proxy answered the upstream's payload with a 500"
+E       AssertionError: the proxy answered the upstream's payload with a 500
+E       assert 500 == 503
+E        +  where 500 = <ClientResponse(http://127.0.0.1:51068/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Wed, 07 Oct 2026 01:10:50 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:383: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 66, in handle_messages
+    return await handle_streaming(request, body, headers, sid)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 93, in handle_streaming
+    return await _stream_single_request(request, body, headers, sid)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 144, in _stream_single_request
+    error_content = await resp.text()
+                    ^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/tests/upstream_stub.py", line 52, in text
+    return self._body.decode()
+           ~~~~~~~~~~~~~~~~~^^
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+=========================== short test summary info ============================
+FAILED tests/test_transport_parity.py::TestNoRequestBodyCap::test_a_two_mebibyte_body_reaches_the_upstream[messages]
+FAILED tests/test_transport_parity.py::TestNoRequestBodyCap::test_a_two_mebibyte_body_reaches_the_upstream[chat-completions]
+FAILED tests/test_transport_parity.py::TestNoRequestBodyCap::test_a_two_mebibyte_body_reaches_the_upstream[passthrough-catch-all]
+FAILED tests/test_transport_parity.py::TestNoRequestBodyCap::test_count_tokens_reads_a_two_mebibyte_body_it_never_forwards
+FAILED tests/test_transport_parity.py::TestNoRequestBodyCap::test_a_strip_images_body_over_the_cap_reaches_the_image_handler
+FAILED tests/test_transport_parity.py::TestStreamCarriesNoDeadline::test_a_stream_outliving_the_shared_deadline_arrives_whole
+FAILED tests/test_transport_parity.py::TestStreamCarriesNoDeadline::test_the_streaming_call_passes_a_timeout_with_nothing_armed
+FAILED tests/test_routes_integration.py::TestCountTokensRoute::test_a_billing_nonce_body_finds_the_stats_messages_recorded
+FAILED tests/test_routes_integration.py::TestCountTokensRoute::test_count_tokens_inflates_on_compaction_trigger[per-session]
+FAILED tests/test_upstream_answer_relay.py::TestUnknownClientCodecArm::test_the_unknown_codec_never_reaches_the_caller_as_a_500[messages]
+FAILED tests/test_upstream_answer_relay.py::TestUnknownClientCodecArm::test_the_unknown_codec_never_reaches_the_caller_as_a_500[chat-completions]
+FAILED tests/test_upstream_answer_relay.py::TestUnknownClientCodecArm::test_the_unknown_codec_never_reaches_the_caller_as_a_500[count-tokens]
+FAILED tests/test_upstream_answer_relay.py::TestUndecodableUpstreamAnswer::test_the_non_stream_probe_decodes_the_body_it_is_only_checking
+FAILED tests/test_upstream_answer_relay.py::TestUndecodableUpstreamAnswer::test_a_stream_error_body_that_no_charset_can_decode_still_answers_itself
+14 failed, 84 passed in 1.16s
+
+== pre-fix exception classes: client direction (LookupError, not UnicodeDecodeError) ==
+   3         ``LookupError`` — not a ``UnicodeDecodeError``, so no arm named it, the handler
+   6 ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+   6 LookupError: unknown encoding: x-not-a-real-codec
+== pre-fix exception classes: response direction (UnicodeDecodeError, not LookupError) ==
+   1         """``text()`` is strict, and the live class on this path is ``UnicodeDecodeError``
+   4 ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+   4 UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte
+
+== FINAL BYTES (wave restored) ==
+........................................................................ [ 73%]
+..........................                                               [100%]
+98 passed in 1.10s

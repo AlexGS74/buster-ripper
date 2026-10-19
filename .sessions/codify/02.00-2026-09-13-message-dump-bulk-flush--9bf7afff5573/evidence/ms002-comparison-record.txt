@@ -1,0 +1,115 @@
+MS-002 COMPARISON RECORD — G-008(b) paired runs (M1/M2)
+=======================================================
+Produced by: QAP-MS002 gate test TC-105/TC-109 (tests/qa/test_qap_ms002.py),
+independently re-executed by the MS-002 Yield Phase (iteration 035) on 2026-09-22,
+and RE-EXECUTED by the MS-002 Yield Phase RE-VERDICT (iteration 069) on 2026-10-06
+at HEAD bd167958e0e4ba321dd080eb5703960d126f281d with the declared live upstream
+REACHABLE. Authoring run: 034-forward-qa (same numbers, deterministic).
+
+THIS RECORD IS THE DURABLE, HUMAN-READABLE COMPARISON G-008(b) REQUIRES, and it is
+the input the roadmap "Switch the default dump format" trigger consumes. It was first
+written by a REJECTED pass (035); 069 re-issues it so the numbers, the environment
+disclosure and the milestone status all describe the same, current, certified run.
+
+Run configuration (identical for every run to date, F injected deterministically):
+  N = 6 turns, each ~40 KB rendered text; --dump-flush-bytes 100000 (threshold
+  crossed at turn 2 and turn 5 → F = 2 flushes); --dump-flush-interval 3600
+  (timer cannot fire); nothing pending at shutdown. Proxy = real subprocess
+  (tests/qa/counted_proxy_entry.py — io.open/builtins.open counter scoped to
+  the dump root; mkdir and SQLite outside the settled write-operation unit).
+
+MEASUREMENTS
+------------
+[TC-105 comparison] N=6 format=change-focused write_ops=2 write_bytes=482762 files=1
+[TC-105 comparison] N=6 format=self-contained  write_ops=2 write_bytes=282647 files=1
+[TC-105 comparison] N=6 format=documented      write_ops=12 write_bytes=442217 files=7
+
+M1 — write-bearing file operations (the proxy proof):
+  Collapsed (each format):  F = 2
+  Documented:               2N = 12
+  Reduction: 1 − F/(2N) = 1 − 2/12 ≈ 83.3% — identical for both collapsed
+  formats (PI:T002/dump_format/format_does_not_change_write_count witnessed).
+
+M2 — files in DUMP_DIR/<sid>/:
+  Collapsed: 1  (<format>.log)
+  Documented: N + 1 = 7  (turn_000.json + 5 diffs + index.txt)
+
+Witness exclusions (asserted by the gate in every run to date):
+  Witness A (one write per pending turn): excluded — each flush of K ≥ 2
+    pending turns is exactly ONE open("a")+write operation.
+  Witness B (rewrite-per-flush, O(N²) bytes): excluded by measurement — each
+    op's bytes < final artifact size AND Σ bytes == final artifact size for
+    both collapsed runs: per-flush payload tracks the pending batch, never the
+    accumulated artifact.
+  Witness C (2N + F / both writers on one path): excluded — collapsed run's
+    listing is exactly {<format>.log} (no documented files); documented run
+    wrote no .log artifact.
+  Documented preservation: index.txt carries N lines, turn_000.json parses
+    with the sent body — today's layout intact (G-008(a) clause).
+
+CAVEATS (carried from the approved plan; do not strip when citing)
+------------------------------------------------------------------
+  * M1 is a PROXY proof: SSD wear is bytes × WAF, not write-call count;
+    physical WAF (M3) is not measurable in this repository (/Volumes/data
+    unmounted). M4 logical bytes are NOT the proof (≈ +1.5%, F-6); byte
+    totals above are recorded as context only.
+  * ⚠ S-1 (US-012, settled 019): the write reduction is OPT-IN. The default
+    remains `documented` at 2N writes; the collapsed formats must be selected
+    with --dump-format. The default-switch decision is DEFERRED to the
+    roadmap entry "Switch the default dump format", gated on the user's
+    judgment of THIS record.
+  * Environment disclosure — SUPERSEDED, see the 069 block below. As RECORDED AT 035:
+    the declared live upstream (http://hyperipper.local:30001) was unreachable during
+    both the authoring and the Yield Phase runs; every proxied request returned the 502
+    upstream-connection baseline. Dump-side observables (the measured surface) are
+    unaffected — dump capture happens at request interception, before upstream connection
+    (probe evidence: 034-forward-qa). Re-running with the upstream reachable remained
+    advisable, and 069 did so: the write-op and file counts did not move.
+
+Milestone status at recording — 035: the ten approved QAP-MS002 scenarios
+(TC-101..TC-106, TC-109, TC-110..TC-112) PASSED; the milestone gate was REJECTED on a
+separate hostile-tier finding (R1: non-UTF-8 /v1/messages body -> unhandled 500
+UnicodeDecodeError instead of a typed 4xx). See iteration 035.
+
+Milestone status at recording — 069: the R1 defect is closed at the source (T003.001,
+accepted-local at 043-01-yield: typed 400 for undecodable client bodies at every
+client-body parse site), the full QAP-MS002 suite is 15/15, and the MS-002 integration
+gate is SEMANTIC-APPROVED at HEAD bd16795. See iteration 069.
+
+RE-EXECUTION AT HEAD bd16795 (2026-10-06, iteration 069 — the MS-002 re-verdict)
+---------------------------------------------------------------------------------
+Command: .venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts= -v -s
+Result:  15 passed in 14.62 s; repeat run 15 passed in 15.20 s.
+Upstream: REACHABLE, verified independently this pass — mDNS resolves
+  hyperipper.local to 192.168.50.132, ping 2/2 (0.243 ms avg), and
+  GET /v1/models answers HTTP 200 with the real model list. The committed
+  harness preflight (require_upstream) passes in 0.02 s. Through the proxy a
+  gate-shaped request returns the UPSTREAM's own 404
+  {"type":"error","error":{"type":"NotFoundError","message":"The model
+  `qa-gate-model` does not exist."}} — not a proxy-local 502 carrying
+  "Cannot connect", which is what the blocked baseline produced. The gate's
+  oracle accepts the former and rejects the latter, and the preflight fails
+  closed on DNS and connection-refused, so an upstream-down run errors out
+  before any assertion instead of passing on connection errors (US-009/US-010).
+
+MEASUREMENTS (identical to 035 and to the 034 authoring run — deterministic injections):
+  [TC-105 comparison] N=6 format=change-focused write_ops=2 write_bytes=482762 files=1
+  [TC-105 comparison] N=6 format=self-contained  write_ops=2 write_bytes=282647 files=1
+  [TC-105 comparison] N=6 format=documented      write_ops=12 write_bytes=442217 files=7
+
+  The recorded figures are byte-identical across the three runs that printed them — 034
+  (authoring), 035 (the rejected Yield Phase) and 069 — which is itself the parity evidence
+  that the collapsed and documented writers were not altered by the waves that have since
+  landed (T009/T010/T010.001, T013 header parity, T014 image slice): dump.py's only post-035
+  deltas are the _render_body extraction (output identical) and T009's pending_bytes moving
+  to UTF-8 bytes (the volume MEASURE, not the write COUNT). The intervening boundary
+  (056's MS-004 pass) took all 15 QAP-MS002 gates green against the live upstream in both
+  run orders but printed no counters, so it corroborates pass status, not byte totals.
+
+  Context for the run-duration change: 035's identical-scope run took 333.70 s because
+  every proxied request waited ~5 s on an unreachable upstream. The drop to ~15 s is the
+  reachability change, not a scope change. All 15 gate tests, both hermetic and process
+  surfaces, ran in full: 407 passed @ 95.75% hermetic, 21/21 across tests/qa.
+
+Reproduce:
+  .venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts= -k tc105 -s

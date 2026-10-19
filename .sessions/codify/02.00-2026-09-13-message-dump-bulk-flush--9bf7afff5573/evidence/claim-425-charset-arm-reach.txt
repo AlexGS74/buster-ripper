@@ -1,0 +1,134 @@
+claim-425 reach determination — assumption-decide 086 (run-46 row 425, seam S20)
+Date: 2026-10-07   Session: 02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573
+Repository state at determination (pre-write HEAD): 08c0a9f7206635e1058faa85dd73d842e64a3384
+aiohttp 3.13.3 (.venv/lib/python3.13/site-packages/aiohttp)
+  web_response.py sha256:3ca73388d5382e67ed5ea295be844cac06ce7950a5a5237e8b39c7b2259ece65   <- byte-identical to claim-425's own pin
+  payload.py      sha256:3ba9ec60d50b2fb01e33673227a4d85fbde77159cbe71270b7901e831c0c2aac   <- byte-identical to claim-425's own pin
+  helpers.py      sha256:435df4ecf0849d6cf844ff1cad4c3c764e7c734605d848b7272c2429f471cf91   <- byte-identical to claim-425's own pin
+Question this file answers (the Reach Gate's question, about repo bytes): can any path reach
+buster_ripper/routes/messages.py:117 (`error_text = result.text`) with a response whose declared
+charset is non-utf-8, or with a charset argument silently dropped?  425's verdict refutes the
+GENERAL round trip; this file decides whether any instance of the refutation is reachable.
+
+================ 1. THE PRODUCERS OF `result` AT :117 ARE A CLOSED SET OF THREE ================
+  handle_streaming (messages.py:83-139) reads .text only when :105 `isinstance(result, web.Response)
+  and result.status >= 400` is true.  `result` comes only from `_stream_single_request` (:142-184):
+    P1  :160-166  resp.status >= 400  -> web.Response(body=error_content, status=resp.status,
+                                       content_type="application/json")     <- the str-body site
+    P2  :169-180  success            -> web.StreamResponse, prepared        <- never passes :105
+    P3  :182-184  aiohttp.ClientError -> web.json_response({"error": "Upstream request failed"},
+                                       status=502)                          <- the text= fast path
+  Nothing else returns into the loop; `web.HTTPBadRequest` (the only other authored Response in the
+  package, count_tokens.py:24-26) is RAISED from a different handler and never becomes `result`.
+
+================ 2. SPELLING CENSUS OVER buster_ripper/ (closed set of call sites) ================
+$ grep -rn "body=" buster_ripper/ --include='*.py'
+    buster_ripper/routes/chat.py:172          body=body          (parameter annotated `body: bytes`, :170)
+    buster_ripper/routes/chat.py:188          body=await resp.read()
+    buster_ripper/routes/messages.py:163      body=error_content      (str, from _error_body :187-198)
+    buster_ripper/routes/messages.py:328      body=content            (bytes, from resp.read() :302)
+    buster_ripper/routes/passthrough.py:44    body=content            (bytes, from resp.read() :38)
+  -> ONE site hands a str to body= : messages.py:163.  The other four hand bytes, so the setter
+     takes the `isinstance(body, (bytes, bytearray))` branch and the str round trip is not in play.
+$ grep -rn "text=" buster_ripper/ --include='*.py'
+    buster_ripper/routes/count_tokens.py:25   text=json.dumps({"error": "Invalid JSON"}), content_type="application/json"
+  -> the HTTPBadRequest arm, and all eight web.json_response(...) sites (chat 32/55/152, messages
+     33/131/273/334, count_tokens 106, passthrough 52) reach Response through json_response's
+     `text=dumps(data)` (web_response.py:833-856), i.e. the text= FAST PATH, not body=.
+$ grep -rn "charset" buster_ripper/ --include='*.py'
+    buster_ripper/routes/messages.py:32       # ... hands the charset to bytes.decode()).      <- comment
+    buster_ripper/routes/messages.py:113      # ... application/json it is built with names no charset ...  <- comment
+    buster_ripper/routes/messages.py:115      # ... charset that helper writes.               <- comment
+  -> ZERO occurrences of `charset=` as an argument, and ZERO sites passing a Content-Type header to a
+     web.Response built with a str body (headers= is passed at the four bytes-body sites only).
+     `charset` exists in this package only inside comments.
+  No `.body =` / `.text =` / `set_payload` assignment exists anywhere in the package, and no
+  FileResponse is used. buster_ripper_legacy.py (excluded from reach by claims.md's
+  universe-of-discourse rule; reference-only) carries zero `charset` occurrences.
+
+================ 3. EXECUTION — the three arms against the installed 3.13.3 bytes ================
+$ .venv/bin/python  (aiohttp 3.13.3 only; no server started, nothing written, no repo file touched)
+=== ARM C : the only spelling any site in buster_ripper/ uses for a str body ===
+--- messages.py:162-166 production spelling
+    spelling        : ['body', 'content_type']
+    .content_type   : 'application/json'
+    .charset        : None
+    header          : 'application/json'
+    .body type      : StringPayload
+    .text == input  : True
+--- same spelling, non-ASCII body ('... café ☕ 日本語 🚀')
+    .charset: None | header: 'application/json' | .body: StringPayload | .text == input : True
+--- same spelling, U+FFFD replacement body (the shape _error_body's errors="replace" arm returns)
+    .charset: None | header: 'application/json' | .body: StringPayload | .text == input : True
+
+=== ARM A : declared non-utf-8 charset (NO site in the package spells this) ===
+--- content_type + charset iso-8859-1, non-ASCII body
+    .charset: 'iso-8859-1' | header: 'text/plain; charset=iso-8859-1' | .text == input : False   <- mojibake
+--- content_type + charset ascii, non-ASCII body
+    .charset: 'ascii' | header: 'application/json; charset=ascii'
+    .text   : RAISES UnicodeDecodeError: 'ascii' codec can't decode byte 0xe2 in position 41        <- loud
+--- content_type + charset latin-1, ASCII-only body
+    .charset: 'latin-1' | header: 'application/json; charset=latin-1' | .text == input : True       <- masked
+  -> all three outcomes match claim-425's ## What it actually does exactly, on the fingerprinted bytes.
+
+=== ARM B : charset= with no content_type= (NO site in the package spells this either) ===
+--- body + charset latin-1 (no content_type)
+    spelling: ['body','charset'] | .content_type: 'text/plain' | .charset: 'utf-8'
+    header  : 'text/plain; charset=utf-8' | .text == input : True
+    -> the caller's latin-1 is silently DROPPED (Response.__init__ never enters the
+       `elif content_type is not None:` branch), so this arm's harm is an ignored argument,
+       not a failed decode; and no site passes charset= at all, so it cannot be spelled here.
+
+=== The loop's other producer P3: web.json_response (the ClientError 502 arm) ===
+    .body type: bytes | .charset: 'utf-8' | header: 'application/json; charset=utf-8'
+    .text round trip: True
+=== P2 guard: does a prepared StreamResponse ever reach the read? ===
+    isinstance(web.StreamResponse(), web.Response) = False     <- Response is the SUBclass; :105 is false
+
+=== End-to-end at the landed read :117 (production helper, installed lib) ===
+    prod = Response(body='{"error": "Context overflow: input 5000 > 4096 tokens, max_completion_tokens 4096"}',
+                    status=400, content_type="application/json")
+    utils.parse_context_overflow_error(prod.text) : ContextOverflowError ctx=4096 inp=5000
+    -> the repaired probe fires through .text at the only spelling the package uses.
+
+================ 4. WHAT THE LANDED CODE IS ENTITLED TO DEPEND ON ==================
+Entitled (each half is evidence on file, not inference):
+  (a) At messages.py:162-166's exact spelling — `content_type=` given, NO charset declared anywhere,
+      `.charset` is None, `.text` therefore applies `or "utf-8"`, and StringPayload always encoded
+      utf-8 — the str round trip HOLDS.  That is the sub-case claim-425's own verdict names as holding,
+      and it is separately certified by the published CL:aiohttp/web-response-str-body-text-property
+      (Verdict: HOLDS, row 421) and by CL:aiohttp/web-response-str-body-accessor-surface (422's
+      enumeration naming `.text` the only accessor returning the string's content).
+  (b) `.text` at that site is TOTAL: `_body` is a StringPayload whose `_value` is exactly
+      s.encode("utf-8"), and `s.encode("utf-8").decode("utf-8") == s` for every str the decode path
+      in _error_body can return (strict decode, or errors="replace" -> U+FFFD).  So the read cannot
+      raise on any upstream payload.  Section 3 shows it True for ASCII, non-ASCII and replacement text.
+  (c) The value is not lost on the wire either (CL:aiohttp/web-response-str-body-wire-bytes, HOLDS).
+NOT entitled:
+  (d) No general "a str body round-trips through web.Response" premise.  claim-425 refutes the
+      universal, and the two published HOLDS records carry the mismatch in their own Actual: caveats.
+  (e) The hold at (a) rests on TWO independent defaults agreeing — StringPayload's hardcoded utf-8
+      (payload.py:430-458, `real_encoding = "utf-8"`, the setter passing no encoding/content_type) and
+      Response.text's `self.charset or "utf-8"` (web_response.py:723-730) — with nothing in the
+      library reconciling them.  aiohttp's stable documentation promises the opposite rule
+      ("tries to encode the given data based on Content-Type HTTP header"); the installed source never
+      implements it.  A later change that names a charset at that constructor, or that reads `.body`
+      again, breaks the probe silently for non-ASCII payloads and loudly (UnicodeDecodeError, outside
+      any handler arm) for a non-decodable one — while the documentation would tell the author it is safe.
+      That is the latent trap this pass records; see QB:assumption-ledger/str-body-charset-doc-divergence.
+
+================ 5. REACH VERDICT ================
+  ARM A (declared non-utf-8 charset) :  UNREACHABLE.  Closed set of 5 body= sites + 9 text= sites
+    (§2), none able to declare a charset; the falsifier needs a call-site SPELLING, and no network,
+    file, or configuration value reaches that spelling — the upstream controls `error_content`'s
+    VALUE and the status, never the presence of a charset argument.
+  ARM B (dropped charset argument)     :  UNREACHABLE.  Same census; `charset=` appears zero times.
+    Its own harm is also lower: the drop makes the response utf-8, which is what the payload already is.
+  ARM C (the reached sub-case)         :  REACHED, AND HOLDS — it is the repair's actual premise, and
+    it is certified by rows 421/422/420 with their permanent handles plus the executed read above.
+  Not the 1%/0.01% category and not `latent`: `latent` needs a guard elsewhere preventing an input a
+  path could otherwise deliver.  Here no path delivers it at all — the guard IS the call-site census,
+  which is static, closed and re-checkable by one grep.  The Reach Gate's `unreachable` row therefore
+  applies to the finding, and its freshness rule is the durable protection: a new `charset=` at that
+  constructor, or a new str-`body=` site, or a return to reading `.body`, makes the citation stale and
+  the finding returns.

@@ -1,0 +1,69 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.8, pytest-9.0.2, pluggy-1.6.0 -- /Users/alexhubitski/Projects/buster-ripper/.venv/bin/python
+rootdir: /Users/alexhubitski/Projects/buster-ripper
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.1.0, asyncio-1.3.0, aiohttp-1.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/test_context_overflow.py::TestStreamingOverflowRetry::test_an_overflow_reduces_the_window_and_reissues FAILED [ 20%]
+tests/test_context_overflow.py::TestStreamingOverflowRetry::test_the_loop_answers_for_itself_when_the_retries_run_out FAILED [ 40%]
+tests/test_context_overflow.py::TestStreamingOverflowRetry::test_an_error_that_is_not_an_overflow_relays_once_and_unchanged[plain-4xx] PASSED [ 60%]
+tests/test_context_overflow.py::TestStreamingOverflowRetry::test_an_error_that_is_not_an_overflow_relays_once_and_unchanged[undecodable-payload] PASSED [ 80%]
+tests/test_context_overflow.py::TestStreamingOverflowRetry::test_the_transport_502_crosses_the_probe_without_raising PASSED [100%]
+
+=================================== FAILURES ===================================
+_ TestStreamingOverflowRetry.test_an_overflow_reduces_the_window_and_reissues __
+
+self = <tests.test_context_overflow.TestStreamingOverflowRetry object at 0x10bed9810>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf02900>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf00ad0>
+
+    async def test_an_overflow_reduces_the_window_and_reissues(self, proxy, mocker):
+        """Three upstream requests, the second and third carrying the reduced window. Red at
+        pre-fix bytes with ``call_count == 1`` and no ``max_completion_tokens`` on any body."""
+        post, sent = _sglang_stream(proxy, mocker,
+                                    StubUpstream(status=400, headers=_JSON, body=_OVERFLOW))
+    
+        await proxy.post("/v1/messages", json={**_MESSAGES, "stream": True})
+    
+>       assert post.call_count == 3, "the overflow retry loop did not run"
+E       AssertionError: the overflow retry loop did not run
+E       assert 1 == 3
+E        +  where 1 = <MagicMock name='post' id='4495772704'>.call_count
+
+tests/test_context_overflow.py:249: AssertionError
+_ TestStreamingOverflowRetry.test_the_loop_answers_for_itself_when_the_retries_run_out _
+
+self = <tests.test_context_overflow.TestStreamingOverflowRetry object at 0x10beda0d0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf8df90>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10beda850>
+
+    async def test_the_loop_answers_for_itself_when_the_retries_run_out(self, proxy, mocker):
+        """The terminal arm — the loop's own answer, taken when ``overflow_err`` is truthy at
+        ``attempt == max_retries`` — needs a match to reach it, so the inert read left it dead
+        too. Pre-fix the caller receives the upstream's own body here; post-fix it receives
+        the loop's."""
+        _sglang_stream(proxy, mocker, StubUpstream(status=400, headers=_JSON, body=_OVERFLOW))
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES, "stream": True})
+    
+        assert response.status == 400
+>       assert json.loads(await response.read()) == {
+            "error": "Context overflow after 2 retries"}
+E       AssertionError: assert {'error': 'Co..._tokens 4096'} == {'error': 'Co...er 2 retries'}
+E         
+E         Differing items:
+E         {'error': 'Context overflow: input 5000 > 4096 tokens, max_completion_tokens 4096'} != {'error': 'Context overflow after 2 retries'}
+E         
+E         Full diff:
+E           {
+E         -     'error': 'Context overflow after 2 retries',
+E         +     'error': 'Context overflow: input 5000 > 4096 tokens, max_completion_tokens 4096',
+E           }
+
+tests/test_context_overflow.py:264: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_context_overflow.py::TestStreamingOverflowRetry::test_an_overflow_reduces_the_window_and_reissues
+FAILED tests/test_context_overflow.py::TestStreamingOverflowRetry::test_the_loop_answers_for_itself_when_the_retries_run_out
+========================= 2 failed, 3 passed in 0.03s ==========================

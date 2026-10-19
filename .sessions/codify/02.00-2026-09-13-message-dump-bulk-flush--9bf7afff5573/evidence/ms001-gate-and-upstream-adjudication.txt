@@ -1,0 +1,97 @@
+MS-001 Yield Phase (iteration 071) — first-party evidence, 2026-10-06
+HEAD c7420ce05c921dafcc4720186b186608f7bf8d86   target base object 72e3a1c6861bf0d8de6317adf52289e5f6cfa4e1
+worktree: only this session's report file is untracked; no production source moved during the pass.
+
+================================================================================
+1. BASE-SYNC RE-VERIFICATION
+================================================================================
+$ git rev-parse main origin/main
+72e3a1c6861bf0d8de6317adf52289e5f6cfa4e1
+72e3a1c6861bf0d8de6317adf52289e5f6cfa4e1
+$ git merge-base --is-ancestor 72e3a1c6… HEAD && echo true
+true
+$ git rev-list --count 72e3a1c6…HEAD    -> 190
+$ git rev-list --count HEAD..72e3a1c6…  -> 0
+Latest BASE-SYNC report: 054-01-forward "BASE-SYNC: unchanged", same target object. No newer report.
+
+================================================================================
+2. QAP-MS001 — INDEPENDENT RE-RUN AT THIS BOUNDARY (Check 6)
+================================================================================
+$ .venv/bin/python -m pytest tests/qa/test_qap_ms001.py -o addopts= -q -rA
+..........                                                               [100%]
+10 passed in 2.40s
+
+PASSED tests/qa/test_qap_ms001.py::test_tc100_collapsed_format_defers_every_write_until_a_flush
+PASSED tests/qa/test_qap_ms001.py::test_tc107_no_format_configured_produces_the_documented_layout
+PASSED tests/qa/test_qap_ms001.py::test_tc108_documented_format_preserves_contents_at_2n_writes
+PASSED tests/qa/test_qap_ms001.py::test_tc108_sensitivity_documented_line_pattern_distinguishes_drift
+PASSED tests/qa/test_qap_ms001.py::test_tc001_documented_write_failure_still_returns_the_upstream_response
+PASSED tests/qa/test_qap_ms001.py::test_tc001_collapsed_flush_failure_still_returns_the_upstream_response
+PASSED tests/qa/test_qap_ms001.py::test_hostile_r1_unknown_dump_format_is_refused_and_writes_nothing
+PASSED tests/qa/test_qap_ms001.py::test_hostile_r1_body_parse_boundaries_on_the_documented_writer
+PASSED tests/qa/test_qap_ms001.py::test_hostile_r2_documented_writer_does_not_escape_the_dump_root
+PASSED tests/qa/test_qap_ms001.py::test_r5_near_miss_session_ids_are_not_merged
+
+Printed measurements (identical to 070-forward-qa's authoring run):
+  [TC-100] pre-flush snapshots=[(0.01, []), (0.02, []), (0.03, [])] turns=3 write_ops=1 write_bytes=1424
+  [TC-108 documented half] N=3 format=documented write_ops=6 write_bytes=1047 files=4
+                           expected_ops=2N=6 expected_files=N+1=4
+
+================================================================================
+3. US-009 CLAIM 2 — THE OWNED FACTUAL CLAIM THIS MILESTONE ARBITRATES
+   (decisions.md:791-798, "Verification: yield-phase:MS-001 PENDING")
+================================================================================
+$ curl -s --max-time 8 http://hyperipper.local:30001/v1/models | head -c 300
+{"object":"list","data":[{"id":"sloppus","object":"model","created":1791300948,
+"owned_by":"vllm","root":"local-inference-lab/Qwen3.8-Flash-Next-NVFP4","parent":null,
+"max_model_len":1048576,"permission":[{"id":"modelperm-a81869142c9f12a3","object":
+"model_permission","created":1791300948,"allow_create…
+
+$ dscacheutil -q host -a name hyperipper.local
+name: hyperipper.local
+ipv6_address: fd11:4798:5e26:4bda:f40b:f3d1:9d31:8419
+ipv6_address: fd11:4798:5e26:4bda:32c5:99ff:fe27:2d8c
+
+The harness's own fail-closed preflight, called from Proxy.__init__ for every gate:
+  [preflight] require_upstream() passed in 0.05s
+
+A real proxied round trip, run outside the gate module, no stub, no mock
+(POST /v1/messages through a freshly started .venv/bin/buster-ripper):
+  [proxied] 404 b'{"type":"error","error":{"type":"NotFoundError","message":"The model `qa-gate-model` does not exist."}}'
+  [rc] 0
+  [dump] a8de21e1dfbd/index.txt
+  [dump] a8de21e1dfbd/turn_000.json
+
+Reading: the 404 is the UPSTREAM's own typed, Anthropic-shaped error — the proxy-local
+failure signature this host's absence produces is 502 with b"Cannot connect to the
+upstream" (035-yield-phase, and the adversarial oracle check recorded in
+evidence/ms002-comparison-record.txt). The dump path ran on the same request, so the
+round trip was intercepted and forwarded for real.
+Verdict: HOLDS. Reachable from the host that runs the gates, and it serves the
+vLLM-compatible /v1/messages + /v1/models surface the proxy expects.
+
+================================================================================
+4. CHECK 7 — INTEGRATION SCOPE ON THESE BYTES
+================================================================================
+Step 0, full hermetic unit suite once (per-task Yield runs only affected tests):
+$ uv run pytest -q
+407 passed, 22 warnings in 9.49s
+Required test coverage of 80% reached. Total coverage: 95.75%
+  buster_ripper/dump.py    180 stmts      0 miss   100%
+  buster_ripper/config.py   42 stmts      2 miss    95%
+  buster_ripper/backend.py  39 stmts      0 miss   100%
+
+Hermetic-ness of the default run, proved rather than assumed:
+$ .venv/bin/python -m pytest --collect-only -q | grep -c "tests/qa"
+0
+$ .venv/bin/python -m pytest tests/test_routes_integration.py --collect-only -q | tail -1
+33 tests collected in 0.05s        # TC-002 / VP-T003-passthrough-regression, in the run above
+
+The rest of the tests/qa tree (same snapshot, same harness configuration):
+$ .venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts= -q
+21 passed in 60.33s        # QAP-MS002 15/15, QAP-MS004 6/6
+  [TC-105 comparison] N=6 format=change-focused  write_ops=2  write_bytes=482762 files=1
+  [TC-105 comparison] N=6 format=self-contained  write_ops=2  write_bytes=282647 files=1
+  [TC-105 comparison] N=6 format=documented      write_ops=12 write_bytes=442217 files=7
+
+Gate tree total at this boundary: 10 + 15 + 6 = 31 process-level gates, all green.

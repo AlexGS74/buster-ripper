@@ -1,0 +1,154 @@
+# T017 — seam-S15 CE-2 repair: evidence for the per-occurrence response relay
+
+Produced by the 2026-10-06 Forward pass for `T017` (wave anchor, sole member; ledger
+`DC-S15-CE-2-r1`). Every command below was executed by this pass against
+`/Users/alexhubitski/Projects/buster-ripper` on branch `refactor/package-structure`,
+base `e68ae02` (Checkpoint 172 — the tree `074-assumption-decide` recorded its routing on).
+Report: `iterations/075-01-forward.md`.
+
+The pass made exactly two edits: `buster_ripper/utils.py` (`response_headers`' return
+container + its docstring + the `multidict` import) and
+`tests/test_header_parity.py` (one new witness class, two module-level constants,
+one docstring paragraph). No route file, no `forward_headers`, no `_HOP_BY_HOP`, no
+`pyproject.toml`, no invariant record, and no `decisions.md` byte changed.
+
+---
+
+## 1. Fail-first: the new class against the unchanged production bytes
+
+`git stash push -- buster_ripper/utils.py` (production back to `e68ae02`, tests kept),
+then `uv run pytest tests/test_header_parity.py::TestRepeatedHeaderOccurrences -v`.
+
+```text
+FAILED …::test_response_headers_keeps_every_occurrence_of_one_name
+FAILED …::test_both_occurrences_reach_the_client[chat]
+FAILED …::test_both_occurrences_reach_the_client[messages]
+FAILED …::test_both_occurrences_reach_the_client[passthrough]
+FAILED …::test_the_two_values_arrive_as_two_field_lines
+========================= 5 failed, 11 passed in 0.05s =========================
+```
+
+The raw-socket failure is the counterexample reproduced on this tree's own bytes — the
+upstream head carried `X-Repeat` twice and the client received one line, the *last* value:
+
+```text
+E       AssertionError: assert 1 == 2
+E        +  where 1 = <built-in method count …>(b'x-repeat' + b':')
+E        +    … = b'HTTP/1.1 200 OK\r\nX-Repeat: second\r\nX-Upstream-Only: upstream\r\n
+                  Content-Type: application/json\r\nContent-Length: 13\r\n
+                  Date: Tue, 06 Oct 2026 20:01:04 GMT\r\n
+                  Server: Python/3.13 aiohttp/3.13.3\r\nConnection: close'
+```
+
+`first` is not anywhere in that head. This is the §2b fold (`evidence/s15-reach-and-base-comparison.txt`)
+shown in a fixture rather than against the live upstream, and it is the reason the
+witness is written against the socket bytes and not only the parsed mapping.
+
+**Which of the sixteen are fail-first and which are guards — stated because they differ.**
+The five above are the fail-first set. The other eleven were green at the unchanged bytes
+and are class-guards, each named with the build that turns it red:
+
+| Guard | Red under this build |
+|---|---|
+| `test_every_occurrence_of_a_dropped_name_is_dropped` × 9 | a filter that preserves occurrences *before* the drop runs, or keys the drop off a set of surviving names — one `Connection` line would leak |
+| `test_two_spellings_of_one_dropped_name_are_both_dropped` | a drop that compares spellings instead of lowercased names — istr keys are **not** case-equal to each other (see §4), so this pair does not merge for free |
+| `test_two_spellings_of_one_kept_name_stay_two_lines_with_their_own_spelling` | a relay that canonicalizes a name's spelling when storing it (the `T013` "spelling as sent" rule is what this pins, and it is the guard against the *tempting* wrong fix of keying by `k.lower()`) |
+
+## 2. Same class, and the whole module, after the closure
+
+```text
+$ uv run pytest tests/test_header_parity.py -q
+81 passed in 0.11s
+```
+
+The accepted `T013`/`T015` witnesses are in that 81 and none was edited: the kept/drop
+census, the direction pairing, the six-name table, `test_no_header_comprehension_is_left_in_a_route`,
+and `test_utils_holds_the_only_two_filters` (`source.count("for k, v in") == 2`).
+The last one holds because the closure keeps the comprehension shape and only changes
+what it builds — the count is 2 on the final bytes, verified:
+
+```text
+$ grep -c "for k, v in" buster_ripper/utils.py
+2
+```
+
+## 3. Runs, and what was measured where
+
+| Run | Command | Result |
+|---|---|---|
+| fail-first (base bytes) | the class, production stashed | 5 failed / 11 passed |
+| module | `uv run pytest tests/test_header_parity.py -q` | **81 passed** |
+| affected scope | the 10 modules touching `utils`/routes/server (header_parity, upstream_answer_relay, routes_integration, stream_relay_commit, context_overflow, session_stats, server_hooks, tls_posture, dump_triggers, dump_flush) | **248 passed** |
+| full hermetic (the plan's named gate) | `uv run pytest` | **455 passed @ 95.75%** — 439 accepted + 16 new; per-file `buster_ripper/utils.py` **98%** (the one miss, `:85`, is `split_thinking`'s no-`think` early return, pre-existing and outside this task) |
+
+The module's own split is 65 accepted + 16 new = **81**. The 453 this pass measured
+mid-flight (before the two spelling guards were added) and the 455 final differ by exactly
+those two witnesses; no other count moved, so nothing accepted was lost or skipped.
+
+The affected-scope run reports `68.24%` coverage and the `--cov-fail-under=80` line fails
+**on the partial selection, not on the code** — `addopts` computes coverage over
+`source = ["buster_ripper"]` while only 10 of the suite's modules ran. The full hermetic run
+on the same bytes is the one the coverage gate governs, and it passes at 95.75%.
+
+## 4. Dependency claims this increment encodes, and where each was read
+
+| The line written | The claim | Read at | Holds? |
+|---|---|---|---|
+| `CIMultiDict((k, v) for k, v in upstream_headers.items() …)` | the producer yields one pair per occurrence | claim 388 `CL:aiohttp/repeated-header-items-iteration` (`HOLDS`, `sha256:546439f0…`), plus live: `CIMultiDictProxy(CIMultiDict(6 pairs)).items()` → 6 pairs | yes |
+| `web.Response(headers=<CIMultiDict>)` | the server writes one field-line per entry | `web_response.py:462-535` + live: `list(web.Response(headers=…).headers.items())` → 5 entries from 5; `:526-527` `headers.setdefault(DATE/SERVER, …)` → the proxy adds no third `Date` when the upstream sent two | yes |
+| `CIMultiDict == dict` for an equal-occurrence head | the dict-shaped witnesses keep comparing equal without edit | live: `CIMultiDict([('Date','T1'),('Server','u')]) == {'Date':'T1','Server':'u'}` → **True**; with a folded pair → **False** (correctly: different occurrence counts are different information) | yes, with the count condition stated |
+| `istr` keys are **not** case-equal to each other in a plain `dict` | two spellings of one name are two dict entries, so the fold is spelling-dependent and the drop is not | live: `istr('date') == istr('Date')` → **False**, `hash` differs, a plain dict holds both; `CIMultiDict` still looks up case-insensitively | yes — this is why the `test_two_spellings_of_*` guards are guards and not tautologies |
+| `multidict` is importable from production code | `aiohttp`'s own metadata: `Requires-Dist: multidict<7.0,>=4.5` (`.venv/…/aiohttp-3.13.3.dist-info/METADATA`), pinned in `uv.lock:435` | yes — but **undeclared** as a direct dependency; see §5 |
+
+Nothing in this table corrected a plan claim. Every row confirms one the composition or the
+routing pass had already read, which is why `DC-S15-CE-2-r1`'s feasibility section (§3 of the
+routing evidence) needed no amendment.
+
+## 5. New fact raised by this increment, recorded not decided
+
+This pass adds `from multidict import CIMultiDict, CIMultiDictProxy` to
+`buster_ripper/utils.py`. `multidict` is a *transitive* dependency (aiohttp hard-requires it;
+`pyproject.toml` declares only `aiohttp` + `click`), already imported in
+`tests/upstream_stub.py:15` and `tests/test_header_parity.py:24`, and named by the plan's own
+closure (`DC-S15-CE-2-r1`: "a `CIMultiDict`, or the pairs themselves") and by `RB-002`/`RB-004`'s
+"Deps stay aiohttp + click" — which says no new *install*, and none is added here.
+
+Whether a direct import should now be declared is a dependency-manifest decision outside this
+wave's touch-set. Recorded as `QB:deps/multidict-direct-import` in `quality-backlog.md`, keyed to
+`roadmap.md` §RM-004 (the same owner that already holds `QB:deps/aiohttp-unpinned`), with the
+0.01% both-parts test written out: `pip install buster-ripper` cannot pull aiohttp without
+multidict, so the import cannot fail in a working install, and if it ever did the process dies at
+import time — loudly, not silently.
+
+## 6. LNCP and sizes, measured rather than asserted
+
+`codify scan path <file> --git --detailed`, one invocation per file:
+
+| File | Base `e68ae02` | Final | |
+|---|---|---|---|
+| `buster_ripper/utils.py` | "2 total issues in 2 functions" (`find_message_start` L:14 N:2 C:6; `ContextOverflowError.__init__` P:3) | **"No refactoring issues found!"** on the git-changed set; whole file still "2 in 2", identical functions, identical numbers | `response_headers` is unflagged before and after; whole file 133 → 149 raw lines (Green, ≤300) |
+| `tests/test_header_parity.py` | 360 raw lines, review band | 444 raw lines, review band, "1 issue in 1 function — Medium Parameters" | the one report is `test_both_occurrences_reach_the_client(self, proxy, mocker, site)` = P:4, a pytest fixture arity shared with every other site-driven witness in the module |
+
+`response_headers`' own metrics did not move across the threshold in either direction:
+the body is still a single comprehension expression (L:1 statement, N:0, C:2 — the `if` and
+the generator), P:1. The growth is 16 docstring lines, which `L` does not count.
+
+The `QB:test-header-parity/file-size` remedy ("move `TestSharedHelpers`/`TestSiteCensus` to a
+helper-level module") is **not** performed by this pass; the reason and the re-measurement are on
+that row and in `iterations/075-01-forward.md` §Backlog pickup.
+
+## 7. Blueprint clauses, each against the byte that meets it
+
+| Required behavior / done-when | Where it is met |
+|---|---|
+| every occurrence reaches the client on its own field-line, at all three boundaries | `utils.py:52-56` (the comprehension) + the three `[…][chat]/[messages]/[passthrough]` witnesses + the raw-line witness |
+| drops exactly the eight hop-by-hop names + `content-length`, and nothing else | the drop tuple is byte-identical (`git diff` shows no hunk in it); `_HOP_BY_HOP` untouched; the 9-param occurrence-census + the two-spelling guard |
+| the three sites still hand its result straight to `web.Response(headers=…)` | `passthrough.py:41,46`, `messages.py:291,295`, `chat.py:172` — zero bytes of diff in all three files |
+| unit witness for `utils.response_headers` | `test_response_headers_keeps_every_occurrence_of_one_name` |
+| CE-1 posture documented, not decided; no behavioral witness for it | `utils.py:46-50` (docstring names the relayed-encoding-over-decoded-bytes posture and points at `roadmap.md` §RM-008); no witness in the class touches `Content-Encoding` |
+| `test_utils_holds_the_only_two_filters` green unweakened | `grep -c "for k, v in" buster_ripper/utils.py` → 2, and the witness is in the 81 passing |
+| no name enters `_HOP_BY_HOP` | `utils.py:14-17` has zero diff; `test_hop_by_hop_set_is_bases_eight_names` green |
+| `forward_headers` untouched (`DC-S10-C4-r1`, N2 base parity) | `utils.py:20-26` zero diff; `test_no_header_comprehension_is_left_in_a_route` green |
+| LNCP/line counts not worsened | §6 |
+| full hermetic suite green | §3 |
+| must NOT fold in `RM-008` (CE-1's posture ruling) | `roadmap.md` §RM-008 has zero diff; the docstring points at it and rules nothing |

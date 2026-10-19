@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.8, pytest-9.0.2, pluggy-1.6.0 -- /Users/alexhubitski/Projects/buster-ripper/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/alexhubitski/Projects/buster-ripper
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.1.0, asyncio-1.3.0, aiohttp-1.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_dump_write_count.py::TestWriteUnit::test_mkdir_and_outside_paths_are_not_counted PASSED [ 10%]
+tests/test_dump_write_count.py::TestOneWritePerFlush::test_flush_of_k_pending_turns_is_one_write[change-focused] PASSED [ 20%]
+tests/test_dump_write_count.py::TestOneWritePerFlush::test_flush_of_k_pending_turns_is_one_write[self-contained] PASSED [ 30%]
+tests/test_dump_write_count.py::TestFlushCountIsF::test_injected_f_flushes_write_f_times_batch_only[change-focused] PASSED [ 40%]
+tests/test_dump_write_count.py::TestFlushCountIsF::test_injected_f_flushes_write_f_times_batch_only[self-contained] PASSED [ 50%]
+tests/test_dump_write_count.py::TestDocumentedCount::test_documented_run_counts_2n_writes PASSED [ 60%]
+tests/test_dump_write_count.py::TestPairedMeasurement::test_collapsed_f_beats_documented_2n_at_same_n[change-focused] PASSED [ 70%]
+tests/test_dump_write_count.py::TestPairedMeasurement::test_collapsed_f_beats_documented_2n_at_same_n[self-contained] PASSED [ 80%]
+tests/test_dump_write_count.py::TestFileCount::test_one_artifact_vs_n_plus_one_files[change-focused] PASSED [ 90%]
+tests/test_dump_write_count.py::TestFileCount::test_one_artifact_vs_n_plus_one_files[self-contained] PASSED [100%]
+ERROR: Coverage failure: total of 35 is less than fail-under=80
+
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+buster_ripper/__init__.py         0      0   100%
+buster_ripper/backend.py         39     39     0%   7-95
+buster_ripper/compaction.py      43     43     0%   3-90
+buster_ripper/config.py          41      2    95%   98-99
+buster_ripper/dump.py           176     20    89%   55-57, 61, 71, 86, 109, 120-125, 132, 195, 280-281, 287, 290, 300
+buster_ripper/image.py           85     85     0%   7-185
+buster_ripper/normalize.py      131    131     0%   3-228
+buster_ripper/session.py         50     25    50%   27-32, 36-46, 50-53, 60-71, 76-85, 90, 97
+buster_ripper/utils.py           55     55     0%   3-126
+-----------------------------------------------------------
+TOTAL                           620    400    35%
+FAIL Required test coverage of 80% not reached. Total coverage: 35.48%
+============================== 10 passed in 0.08s ==============================

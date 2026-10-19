@@ -1,0 +1,177 @@
+T013 retry 1 - F-4 reopened by 066-01-yield (packet P1) - Forward evidence
+Base at start 74d935e (Checkpoint 140, the rejected state). Checkpoints: 141 2be9783
+(production), 142 ce55974 (witnesses). G-1 (d0b1317) and G-2 (96fe429) are accepted: not
+retried, not restyled, and byte-unchanged by this retry (proof below).
+
+=== P1 reproduced before anything changed (three-way, 15 shapes) ===
+$ uv run python probe_p1_orderings.py   (temp dir; base and pre-fix transplanted from git)
+
+case                                      base 41d3fc6          pre-fix 74d935e       fix (worktree)        verdict
+------------------------------------------------------------------------------------------------------------------------------
+blank then real, different spellings      ['', 'Bearer sk-real']['']                  ['Bearer sk-real']    ok
+real then blank, different spellings      ['Bearer sk-real', '']['Bearer sk-real']    ['Bearer sk-real']    ok
+blank then real, same spelling            ['Bearer sk-real']    ['']                  ['Bearer sk-real']    ok
+real then blank, same spelling            ['']                  ['Bearer sk-real']    ['Bearer sk-real']    note: fix sends a credential base did not
+bearer-noise then real, same spelling     ['Bearer sk-real']    ['Bearer sk-real']    ['Bearer sk-real']    ok
+real then bearer-noise, same spelling     []                    ['Bearer sk-real']    ['Bearer sk-real']    note: fix sends a credential base did not
+bearer-noise then real, different spellings['Bearer sk-real']    ['Bearer sk-real']    ['Bearer sk-real']    ok
+real then bearer-noise, different spellings['Bearer sk-real', 'Bearer ']['Bearer sk-real']    ['Bearer sk-real']    ok
+blank then bearer-noise                   ['', 'Bearer ']       ['']                  ['']                  ok (base sends no credential)
+lone blank line                           ['']                  ['']                  ['']                  ok (base sends no credential)
+lone bearer-noise, bare                   []                    []                    []                    ok (base sends no credential)
+lone bearer-noise, trailing space         []                    []                    []                    ok (base sends no credential)
+lone real token                           ['Bearer sk-real']    ['Bearer sk-real']    ['Bearer sk-real']    ok
+non-bearer scheme                         ['Basic YWxhZGRpbjpvcGVuc2VzYW1l']['Basic YWxhZGRpbjpvcGVuc2VzYW1l']['Basic YWxhZGRpbjpvcGVuc2VzYW1l']ok
+no auth header at all                     []                    []                    []                    ok (base sends no credential)
+
+credential regressions vs base: 0
+pre-fix rows that differ from the fix: 2
+
+Reading: the two rows the packet names (`blank then real`, both spellings) went from base's
+credential to the pre-fix [''] - that is P1. `real then blank, same spelling` and `real then
+bearer-noise, same spelling` are where BASE destroyed the credential and F-4 fixed it; those
+are marked note, not regression, because the fix sends a token base did not. Across all 15
+shapes: credential regressions vs base = 0, and only the packet's two rows differ pre-fix->fix.
+
+=== Witnesses red against the pre-fix bytes, before the fix ===
+$ uv run pytest tests/test_header_parity.py::TestEmptyBearerRule -q --no-cov   # at 74d935e
+  FAILED ...collapsed_copy[c-collapse-blank-first]   AssertionError: assert [''] == ['Bearer sk-real']
+  FAILED ...collapsed_copy[py-split-blank-first]     AssertionError: assert [''] == ['Bearer sk-real']
+  2 failed, 18 passed in 0.06s
+$ same command after 2be9783:
+  20 passed in 0.03s
+
+=== Fail-first matrix: one mutation per run, .pyc purged, two agreeing runs each ===
+M1   3 failed, 58 passed      utils.response_headers WITHOUT the bound content-length extension
+       - test_lying_upstream_content_length_never_reaches_the_client[messages]
+       - test_lying_upstream_content_length_never_reaches_the_client[passthrough]
+       - (+1 more of the same family)
+M2   2 failed, 59 passed      messages' egress site wired to response_headers (direction swap)
+       - test_site_calls_the_egress_helper_on_the_request_mapping[messages]
+       - test_site_calls_the_ingress_helper_on_the_upstream_mapping[messages]
+M3   13 failed, 48 passed     routes/chat.py at 41d3fc6 (rule decides from the collapsed dict)
+       - test_hop_by_hop_names_never_reach_upstream[chat]
+       - test_site_calls_the_egress_helper_on_the_request_mapping[chat]
+       - (+11 more of the same family)
+M4   8 failed, 4 passed       post-commit arm returns a fresh 502 - the defect G-1 fixed
+       - test_one_head_one_terminal_and_no_error_turn[client-payload-error]
+       - test_one_head_one_terminal_and_no_error_turn[upstream-payload-attribute-error]
+       - (+6 more of the same family)
+M5   5 failed, 7 passed       arm narrowed from except Exception to except aiohttp.ClientError
+       - test_one_head_one_terminal_and_no_error_turn[upstream-payload-attribute-error]
+       - test_one_head_one_terminal_and_no_error_turn[bare-asyncio-timeout-error]
+       - (+3 more of the same family)
+M6   8 failed, 4 passed       post-commit log text back to 'Upstream error: %s'
+       - test_one_head_one_terminal_and_no_error_turn[client-payload-error]
+       - test_one_head_one_terminal_and_no_error_turn[upstream-payload-attribute-error]
+       - (+6 more of the same family)
+M7   4 failed, 8 passed       abandonment path returns None instead of the committed response
+       - test_one_head_one_terminal_and_no_error_turn[client-payload-error]
+       - test_one_head_one_terminal_and_no_error_turn[upstream-payload-attribute-error]
+       - (+2 more of the same family)
+M8   10 failed, 2 passed      routes/messages.py at Checkpoint 131 (pre-G-1) against the relay module
+       - test_one_head_one_terminal_and_no_error_turn[client-payload-error]
+       - test_one_head_one_terminal_and_no_error_turn[upstream-payload-attribute-error]
+       - (+8 more of the same family)
+M9   2 failed, 59 passed      routes/chat.py at Checkpoint 140 (the defect 066-01-yield P1 names)
+       - test_the_rule_reads_the_request_mapping_not_the_collapsed_copy[c-collapse-blank-first]
+       - test_the_rule_reads_the_request_mapping_not_the_collapsed_copy[py-split-blank-first]
+M10  2 failed, 59 passed      _carries_token lets the blank line pose as a credential (finer than M9)
+       - test_the_rule_reads_the_request_mapping_not_the_collapsed_copy[c-collapse-blank-first]
+       - test_the_rule_reads_the_request_mapping_not_the_collapsed_copy[py-split-blank-first]
+M11  1 failed, 60 passed      the blank-line fallback branch removed (base parity for `Authorization:` lost)
+       - test_a_value_less_authorization_line_is_not_touched
+
+M9 is the packet's regression requirement stated as a mutation: chat.py at Checkpoint 140
+turns exactly the two blank-first rows red, nothing else. M10 is the same defect at predicate
+granularity. M11 removes the blank-line fallback and turns the base-parity witness red - so
+both branches of the new selection have their own falsifier, and the accepted members (M4-M8)
+still read exactly as 066-01-yield reviewed them.
+
+=== How M5's reading was nearly wrong, and what it costs to chain mutations ===
+The first two chained runs reported M5 = 9 failed. In isolation the same bytes give 5, and
+5 is the semantically right answer (only the non-ClientError half escapes a narrowed arm).
+The 9 was M4's code running under M5's source:
+
+sizes: head=11315  M4=11325  M5-only=11325
+M4 and M5-only are the same size: True
+
+step 1 - file is M4      -> M4's fresh-502 return   (pyc tag: second 1791254422, size 11325)
+step 2 - file is M5-only -> M4's fresh-502 return   (on disk: ClientError arm)
+step 3 - file is head, later mtime -> M4's fresh-502 return
+
+restored: True
+
+Cause: CPython's .pyc source tag is (whole-second mtime, size), and M4's edit and M5's edit
+each leave messages.py at exactly 11325 bytes. Written in the same second, the cached module
+validates for the wrong source, and a fresh 502 return was reported for a file that had none.
+The driver now purges the .pyc per case, runs with PYTHONDONTWRITEBYTECODE=1, requires two
+agreeing tallies, and restores in a finally block (an earlier draft's abort left utils.py
+mutated). Filed as QB:process/hand-rolled-matrix-pyc-staleness, defer-tier.
+
+=== Invariant and block checks (this tree) ===
+$ grep -rn "headers.items()" buster_ripper/routes/
+  no output -> zero matches (done-when (1) holds)
+$ grep -rn "forward_headers(" buster_ripper/routes/ | grep -v import
+buster_ripper/routes/chat.py:103:    headers = forward_headers(request_headers)
+buster_ripper/routes/messages.py:64:    headers = forward_headers(request.headers)
+buster_ripper/routes/passthrough.py:17:    headers = forward_headers(request.headers)
+$ grep -rn "response_headers(" buster_ripper/routes/ | grep -v import
+buster_ripper/routes/messages.py:285:            resp_headers = response_headers(resp.headers)
+buster_ripper/routes/passthrough.py:41:            resp_headers = response_headers(resp.headers)
+  -> still 3 egress + 2 ingress call sites: no sixth site, no middleware, no new referent
+$ grep -in "authorization\|bearer" buster_ripper/utils.py
+13:    "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+  -> 062 R-B holds: the only match is proxy-authorization inside _HOP_BY_HOP, a hop-by-hop
+     name. No Bearer/credential logic in utils; the rule is chat-route-local (grep 'Bearer'
+     buster_ripper/ -> routes/chat.py, config.py).
+
+$ git diff 74d935e..HEAD --stat   (the retry's whole footprint)
+buster_ripper/routes/chat.py | 38 +++++++++++++++++++++-----------------
+ tests/test_header_parity.py  | 24 ++++++++++++++++++++++--
+ 2 files changed, 43 insertions(+), 19 deletions(-)
+  -> G-1's and G-2's files are not in the diff at all: messages.py and REFACTORING_PLAN.md
+     byte-unchanged since acceptance, as the packet requires.
+
+$ git diff 41d3fc6..HEAD -- buster_ripper/routes/chat.py buster_ripper/routes/messages.py | grep -E '^[+-].*(keep-alive|X-Accel-Buffering|Cache-Control|event-stream|application/json)'
+  no output -> the five proxy-authored response literals are still untouched (DC-S10-C4-r1), re-proved against the retry's tree
+
+$ git diff 41d3fc6..HEAD -- buster_ripper tests | grep -icE 'rfc|7\.6\.1'
+  0  -> DC-claim-208-r1: no citation of RFC 9110 or 7.6.1 anywhere in the wave's diff
+$ git log 41d3fc6..HEAD --format='%s%n%b' | grep -icE 'rfc|7\.6\.1'
+  1  -> nor in any commit message, including this retry's two. The single hit is checkpoint
+        3c87d15's own words "the zero-RFC-citation check" — the prohibition named, not a
+        standard cited; the census holds on its intended meaning, verified per-commit
+        (clause identifying the hit added at drain, QB:evidence-gloss/rfc-census-prints-one)
+
+=== Cost and state ===
+$ uv run pytest -q
+  374 passed, 23 warnings in 9.98s  (was 370 at 140; +4 table rows)
+$ uv run pytest tests/test_header_parity.py tests/test_stream_relay_commit.py -q --no-cov
+  73 passed in 0.10s
+$ uv run pytest tests/qa/test_qap_ms004.py --no-cov   (run against 2be9783's production)
+  6 passed in 44.31s
+
+LNCP (measured):
+  buster_ripper/routes/chat.py           Summary: 18 total issues found in 8 functions
+  buster_ripper/routes/messages.py       Summary: 18 total issues found in 6 functions
+  buster_ripper/utils.py                 Summary: 2 total issues found in 2 functions
+  buster_ripper/routes/passthrough.py    Summary: 1 total issues found in 1 functions
+  tests/test_header_parity.py            Summary: 13 total issues found in 13 functions
+  tests/test_stream_relay_commit.py      Summary: 3 total issues found in 3 functions
+  tests/conftest.py                      Summary: 5 total issues found in 2 functions
+  tests/upstream_stub.py                 Summary: 2 total issues found in 2 functions
+  chat.py raw lines 295 -> 299: under the 300 Green ceiling, so no FL-LNCP review item
+  was needed (066-01-yield P2 warned the next chat change would either fit or file).
+  _prepare_headers and _carries_token report no issue; the file's scan is 18 issues in 8
+  functions, unchanged from Checkpoint 140.
+  Too Many Parameters across all four test files: 0 (measured with --detailed | grep -c).
+
+Correction to a commit message, recorded rather than amended: 142's body says the module went
+335 -> 351 lines. It is 355. Checkpoint history here is append-only, so the record is fixed
+here and in iterations/067-01-forward.md; QB:test-header-parity/file-size is updated to 355.
+
+$ git status --porcelain       (taken at Checkpoint 142, before this record was written)
+  (clean) - production and tests tree; the only files this pass adds are the session records:
+  evidence/t013-retry1-header-parity.txt, iterations/067-01-forward.md, plan-summary.md,
+  handoff-context.md, quality-backlog.md, evidence/INDEX.md

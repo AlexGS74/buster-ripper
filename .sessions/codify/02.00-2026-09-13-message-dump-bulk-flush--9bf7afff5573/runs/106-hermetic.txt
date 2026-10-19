@@ -1,0 +1,51 @@
+# hermetic full suite at HEAD 0ac2a6555c9726d70fb4d98fc945bb49d959973f
+........................................................................ [ 14%]
+........................................................................ [ 28%]
+........................................................................ [ 42%]
+........................................................................ [ 56%]
+........................................................................ [ 70%]
+........................................................................ [ 84%]
+........................................................................ [ 98%]
+.........                                                                [100%]
+=============================== warnings summary ===============================
+tests/test_backend.py: 20 warnings
+  /Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_urldispatcher.py:208: DeprecationWarning: Bare functions are deprecated, use async ones
+    warnings.warn(
+
+tests/test_server_hooks.py::TestSpawnDumpFlush::test_spawns_dump_poll_flush_coroutine
+  /Users/alexhubitski/.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:2247: RuntimeWarning: coroutine 'start_kv_cache_monitoring' was never awaited
+    def __init__(self, name, parent):
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_server_hooks.py::TestSpawnDumpFlush::test_spawns_dump_poll_flush_coroutine
+  /Users/alexhubitski/.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:2247: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    def __init__(self, name, parent):
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_server_hooks.py::TestOnCleanupDumpFlush::test_shutdown_flush_failure_never_raises
+  /Users/alexhubitski/.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/traceback.py:522: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    def format_frame_summary(self, frame_summary, **kwargs):
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+buster_ripper/__init__.py         0      0   100%
+buster_ripper/backend.py         39      0   100%
+buster_ripper/compaction.py      43      0   100%
+buster_ripper/config.py          42      2    95%   102-103
+buster_ripper/dump.py           180      0   100%
+buster_ripper/image.py           95      2    98%   79, 94
+buster_ripper/normalize.py      133      4    97%   159, 162, 201, 206
+buster_ripper/session.py         50     12    76%   36-46, 50-53, 60-71, 82-85
+buster_ripper/utils.py           56      1    98%   85
+-----------------------------------------------------------
+TOTAL                           638     21    97%
+Required test coverage of 80% reached. Total coverage: 96.71%
+513 passed, 23 warnings in 10.24s

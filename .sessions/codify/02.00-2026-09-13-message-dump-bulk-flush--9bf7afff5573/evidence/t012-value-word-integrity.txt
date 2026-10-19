@@ -1,0 +1,119 @@
+T012 - serve_buster_ripper.sh forwards every environment value as exactly ONE argv word
+captured 2026-10-05 on bash 3.2.57(1)-release (arm64-apple-darwin25), which is the interpreter
+this script's `/usr/bin/env bash` shebang resolves to here - the version the empty-array
+question had to be settled on rather than assumed.
+
+Mechanism: a PATH shim named buster-ripper records the argv the wrapper execs (NUL-separated,
+rendered with Python repr so whitespace and control characters stay visible inside one line).
+No server starts, no port is bound, no upstream is contacted; HOME is pinned to a never-created
+path. `argc` is the binary's real argument count; each bracketed entry is one argv word.
+
+== the assembly, before -> after. Line 28's default form, every guard condition, header
+   line 14 and README.md are unchanged; only the appends and the exec expansion move. ==
+  before: EXTRA_FLAGS=""
+          [[ -n "${DUMP_DIR}"    ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --dump-dir ${DUMP_DIR}"
+          [[ -n "${DUMP_FORMAT}" ]] && EXTRA_FLAGS="${EXTRA_FLAGS} --dump-format ${DUMP_FORMAT}"
+          exec buster-ripper ... ${EXTRA_FLAGS}
+  after:  EXTRA_FLAGS=()
+          [[ -n "${DUMP_DIR}"    ]] && EXTRA_FLAGS+=(--dump-dir "${DUMP_DIR}")
+          [[ -n "${DUMP_FORMAT}" ]] && EXTRA_FLAGS+=(--dump-format "${DUMP_FORMAT}")
+          exec buster-ripper ... ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
+  script sha256 d5db2144a2452840e7a5284c524c3fbfeef60dc117a55d61fab57a5aeafc5c90
+             ->  c58256fbec793c520720c9e86fee8740653939275b508f50b212ab60bd0908af
+
+######  THE COUNTEREXAMPLES - same command, both byte states  ######
+
+== DUMP_DIR="/tmp/my docs"  (the finding: three words where two were intended) ==
+  before argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/tmp/my' 'docs' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/tmp/my docs' '--preserved-thinking'
+
+== DUMP_DIR=" "  (a value contributing no field, swallowing the NEXT flag) ==
+  before argc=8 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' ' ' '--preserved-thinking'
+
+== DUMP_DIR=<tab>  (same class, other IFS character) ==
+  before argc=8 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '\t' '--preserved-thinking'
+
+== DUMP_FORMAT="a b"  (line 37 misroutes the same way; --dump-dir suppressed to isolate it) ==
+  before argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-format' 'a' 'b' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-format' 'a b' '--preserved-thinking'
+
+== both values contain whitespace ==
+  before argc=13 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/tmp/my' 'docs' '--dump-format' 'change' 'focused' '--preserved-thinking'
+  after  argc=11 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/tmp/my docs' '--dump-format' 'change focused' '--preserved-thinking'
+
+== DUMP_DIR='*.md' run from a directory holding a.md and b.md
+   (the unquoted expansion also pathname-expanded, so a matching pattern became one word per file) ==
+  before argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' 'a.md' 'b.md' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '*.md' '--preserved-thinking'
+
+######  NO VALUE PROTOCOL OF THE WRAPPERS OWN - the value stays an opaque string  ######
+
+== DUMP_DIR="--verbose"  (a value that looks like a flag is still only the value) ==
+  before argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '--verbose' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '--verbose' '--preserved-thinking'
+
+== DUMP_DIR=quote and backslash punctuation ==
+  before argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' 'a"b\\c' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' 'a"b\\c' '--preserved-thinking'
+
+== DUMP_DIR with an embedded tab and newline ==
+  before argc=11 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' 'x' 'y' 'z' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' 'x\ty\nz' '--preserved-thinking'
+
+######  THE ZERO-WORD ARM IS A LIVE WITNESS - mutation, stderr shown  ######
+   naive.sh is after.sh with the guarded expansion replaced by bare "${EXTRA_FLAGS[@]}",
+   which is not nounset-safe on bash 3.2. Both rows are every-append-suppressed.
+
+== DUMP_DIR="" DUMP_FORMAT="" PRESERVED_THINKING=0 ==
+  naive  no argv - exec never ran
+         exit=1  stderr: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/t012cap/naive.sh: line 50: EXTRA_FLAGS[@]: unbound variable
+  guarded argc=6 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001'
+
+######  DONE-WHEN: the word sets the wrapper already owed, unchanged  ######
+-- the all-appends-suppressed case (the zero-word arm, on the shipped bytes)
+
+== DUMP_DIR="" DUMP_FORMAT="" PRESERVED_THINKING=0 ==
+  before argc=6 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001'
+  after  argc=6 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001'
+
+-- T011's three DUMP_DIR states, observed on the post-T012 bytes
+
+== DUMP_DIR unset (keeps the default path) ==
+  before argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+
+== DUMP_DIR="" (the documented disable form) ==
+  before argc=7 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--preserved-thinking'
+  after  argc=7 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--preserved-thinking'
+
+== DUMP_DIR=/tmp/served-diffs (explicit) ==
+  before argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/tmp/served-diffs' '--preserved-thinking'
+  after  argc=9 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/tmp/served-diffs' '--preserved-thinking'
+
+-- the forms README.md lines 71-93 and 192 document
+
+== STRIP_DATE=1 ==
+  before argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--strip-date' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+  after  argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--strip-date' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+
+== VERBOSE=1 ==
+  before argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--verbose' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+  after  argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--verbose' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+
+== SKIP_TLS_VERIFY=1 ==
+  before argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--skip-tls-verify' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+  after  argc=10 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--skip-tls-verify' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+
+== all three boolean toggles together ==
+  before argc=12 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--strip-date' '--verbose' '--skip-tls-verify' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+  after  argc=12 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--strip-date' '--verbose' '--skip-tls-verify' '--dump-dir' '/nonexistent-home/mllm/prompt-diffs' '--preserved-thinking'
+
+== UPSTREAM=http://10.0.0.1:30000 PORT=30002 ==
+  before argc=7 '--upstream' 'http://10.0.0.1:30000' '--host' '0.0.0.0' '--port' '30002' '--preserved-thinking'
+  after  argc=7 '--upstream' 'http://10.0.0.1:30000' '--host' '0.0.0.0' '--port' '30002' '--preserved-thinking'
+
+== DUMP_FORMAT=change-focused DUMP_DIR=<home>/mllm/prompt-diffs (README:192) ==
+  before argc=11 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/Users/alexhubitski/mllm/prompt-diffs' '--dump-format' 'change-focused' '--preserved-thinking'
+  after  argc=11 '--upstream' 'http://localhost:30000' '--host' '0.0.0.0' '--port' '30001' '--dump-dir' '/Users/alexhubitski/mllm/prompt-diffs' '--dump-format' 'change-focused' '--preserved-thinking'

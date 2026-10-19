@@ -1,0 +1,41 @@
+$ .venv/bin/buster-ripper --help   (new option, real CLI)
+  --verbose                       Log every normalization applied and per-turn
+                                  token/latency stats.
+  --dump-dir PATH                 Enable session prompt diffing under
+                                  PATH/<session_id>/.
+  --dump-format [documented|change-focused|self-contained]
+                                  Dump output format: documented = per-turn
+
+$ ls DUMP_DIR/<sid>/          (after 3 buffered turns + flush_all, change-focused)
+total 8
+drwxr-xr-x@ 3 alexhubitski  staff    96 Sep 22 07:08 .
+drwx------@ 3 alexhubitski  staff    96 Sep 22 07:08 ..
+-rw-r--r--@ 1 alexhubitski  staff  2205 Sep 22 07:08 change-focused.log
+
+$ head -20 DUMP_DIR/<sid>/change-focused.log
+turn 000  11:08:26  FULL  1 msgs  0 tools  0.1 KB
+--- turn 000 body ---
+{
+  "system": "sys-a",
+  "messages": [
+    {
+      "role": "user",
+      "content": "turn-0 message 0"
+    }
+  ]
+}
+--- turn 000 rendered ---
+
+
+[system]
+sys-a
+
+────────────────────────────────────────────────────────────────────────────────
+
+[message 0 / user]
+[...]
+
+$ sed -n 1,3p DUMP_DIR/<sid>/self-contained.log   (second collapsed format)
+turn 000  11:08:26  FULL  1 msgs  0 tools  0.1 KB
+--- turn 000 body ---
+{

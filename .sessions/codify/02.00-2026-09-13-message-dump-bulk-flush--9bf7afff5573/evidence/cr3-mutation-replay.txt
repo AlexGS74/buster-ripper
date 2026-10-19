@@ -1,0 +1,147 @@
+== T020 mutation replay and controls ==
+mutated compaction.py:49-52 (operand order swapped; size differs to defeat .pyc staleness)
+-- 1. weights swapped at compaction.py:49-52 --
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+______________________ test_ema_smoothing_reduces_bounces ______________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bc86ad0>
+
+    async def test_ema_smoothing_reduces_bounces(mocker):
+        """Three distinct raw readings, and the blend is production's, not the test's.
+    
+        The expectations are literals for α = 0.3: an assertion that re-runs
+        ``(1 - α) * prev + α * raw`` in the source's operand order cannot fail when the two
+        weights are swapped, which is the mutation this witness exists to catch. The bouncy
+        sequence is the one the docstring at ``compaction.py:25-27`` describes.
+        """
+        readings = [0.75, 0.0, 0.23]
+        values, answers = await _drive_ticks(mocker, readings)
+    
+        assert compaction._KV_EMA_ALPHA == 0.3, "the literals below are this α's"
+>       assert values == [0.75, pytest.approx(0.525), pytest.approx(0.4365)], (
+            f"the blend is not (1-α)·prev + α·raw over the three ticks: {values!r}")
+E       AssertionError: the blend is not (1-α)·prev + α·raw over the three ticks: [0.75, 0.22499999999999998, 0.22849999999999998]
+E       assert [0.75, 0.2249...9999999999998] == [0.75, 0.525 ...365 ± 4.4e-07]
+E         
+E         At index 1 diff: 0.22499999999999998 != 0.525 ± 5.2e-07
+E         Use -v to get more diff
+
+tests/test_compaction.py:448: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_compaction.py::test_ema_smoothing_reduces_bounces - Asserti...
+1 failed, 1 passed, 19 deselected in 0.02s
+-- 2. control: double status forced non-200 (witness must NOT stay green) --
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+________________________ test_ema_first_reading_is_raw _________________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bbf5550>
+
+    async def test_ema_first_reading_is_raw(mocker):
+        """The name's promise, through the loop: the first reading lands raw.
+    
+        Before this pair ran ``poll_kv_cache`` at all — they computed the formula inline and
+        asserted on their own arithmetic, so ``compaction.py:49`` stayed a missing line and
+        the module globals never moved.
+        """
+        values, answers = await _drive_ticks(mocker, [0.85])
+    
+>       assert values == [0.85], f"tick 1 did not produce the raw reading: {values!r}"
+E       AssertionError: tick 1 did not produce the raw reading: [0.0]
+E       assert [0.0] == [0.85]
+E         
+E         At index 0 diff: 0.0 != 0.85
+E         Use -v to get more diff
+
+tests/test_compaction.py:432: AssertionError
+______________________ test_ema_smoothing_reduces_bounces ______________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bbded50>
+
+    async def test_ema_smoothing_reduces_bounces(mocker):
+        """Three distinct raw readings, and the blend is production's, not the test's.
+    
+        The expectations are literals for α = 0.3: an assertion that re-runs
+        ``(1 - α) * prev + α * raw`` in the source's operand order cannot fail when the two
+        weights are swapped, which is the mutation this witness exists to catch. The bouncy
+        sequence is the one the docstring at ``compaction.py:25-27`` describes.
+        """
+        readings = [0.75, 0.0, 0.23]
+        values, answers = await _drive_ticks(mocker, readings)
+    
+        assert compaction._KV_EMA_ALPHA == 0.3, "the literals below are this α's"
+>       assert values == [0.75, pytest.approx(0.525), pytest.approx(0.4365)], (
+            f"the blend is not (1-α)·prev + α·raw over the three ticks: {values!r}")
+E       AssertionError: the blend is not (1-α)·prev + α·raw over the three ticks: [0.0, 0.0, 0.0]
+E       assert [0.0, 0.0, 0.0] == [0.75, 0.525 ...365 ± 4.4e-07]
+E         
+E         At index 0 diff: 0.0 != 0.75
+E         Use -v to get more diff
+
+tests/test_compaction.py:448: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_compaction.py::test_ema_first_reading_is_raw - AssertionErr...
+FAILED tests/test_compaction.py::test_ema_smoothing_reduces_bounces - Asserti...
+2 failed, 19 deselected in 0.02s
+-- 3. control: __aenter__ self-binding removed (S19-CE-1 discarded payload) --
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+________________________ test_ema_first_reading_is_raw _________________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b549550>
+
+    async def test_ema_first_reading_is_raw(mocker):
+        """The name's promise, through the loop: the first reading lands raw.
+    
+        Before this pair ran ``poll_kv_cache`` at all — they computed the formula inline and
+        asserted on their own arithmetic, so ``compaction.py:49`` stayed a missing line and
+        the module globals never moved.
+        """
+        values, answers = await _drive_ticks(mocker, [0.85])
+    
+>       assert values == [0.85], f"tick 1 did not produce the raw reading: {values!r}"
+E       AssertionError: tick 1 did not produce the raw reading: [0.0]
+E       assert [0.0] == [0.85]
+E         
+E         At index 0 diff: 0.0 != 0.85
+E         Use -v to get more diff
+
+tests/test_compaction.py:431: AssertionError
+______________________ test_ema_smoothing_reduces_bounces ______________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b52ac10>
+
+    async def test_ema_smoothing_reduces_bounces(mocker):
+        """Three distinct raw readings, and the blend is production's, not the test's.
+    
+        The expectations are literals for α = 0.3: an assertion that re-runs
+        ``(1 - α) * prev + α * raw`` in the source's operand order cannot fail when the two
+        weights are swapped, which is the mutation this witness exists to catch. The bouncy
+        sequence is the one the docstring at ``compaction.py:25-27`` describes.
+        """
+        readings = [0.75, 0.0, 0.23]
+        values, answers = await _drive_ticks(mocker, readings)
+    
+        assert compaction._KV_EMA_ALPHA == 0.3, "the literals below are this α's"
+>       assert values == [0.75, pytest.approx(0.525), pytest.approx(0.4365)], (
+            f"the blend is not (1-α)·prev + α·raw over the three ticks: {values!r}")
+E       AssertionError: the blend is not (1-α)·prev + α·raw over the three ticks: [0.0, 0.0, 0.0]
+E       assert [0.0, 0.0, 0.0] == [0.75, 0.525 ...365 ± 4.4e-07]
+E         
+E         At index 0 diff: 0.0 != 0.75
+E         Use -v to get more diff
+
+tests/test_compaction.py:447: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_compaction.py::test_ema_first_reading_is_raw - AssertionErr...
+FAILED tests/test_compaction.py::test_ema_smoothing_reduces_bounces - Asserti...
+2 failed, 19 deselected in 0.02s
+-- 4. restored: both witnesses green --
+..                                                                       [100%]
+2 passed, 19 deselected in 0.01s
+-- 5. coverage criterion: no missing line at compaction.py:49 --
+buster_ripper/compaction.py      43      6    86%   81-85, 90
+2 passed, 19 deselected in 0.08s
+ tests/test_compaction.py | 121 +++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 97 insertions(+), 24 deletions(-)

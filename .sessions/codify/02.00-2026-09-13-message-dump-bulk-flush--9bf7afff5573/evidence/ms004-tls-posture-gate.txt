@@ -1,0 +1,82 @@
+MS-004 Yield Phase — independent execution of the QAP-MS004 gate (2026-10-05)
+================================================================================
+Snapshot: HEAD 25c2b77 (Checkpoint 127) on refactor/package-structure.
+Production tree byte-identical to Checkpoint 119 (the tree 053-01-yield validated):
+  git diff --exit-code 9ae82b0 HEAD -- buster_ripper serve_buster_ripper.sh pyproject.toml README.md  -> 0
+Only tests/qa/ moved since: harness.py, test_qap_ms004.py, tls_peer.py, tls_probe_entry.py.
+Target base object 72e3a1c6861bf0d8de6317adf52289e5f6cfa4e1 is an ancestor of HEAD.
+Live upstream http://hyperipper.local:30001/v1/models -> HTTP 200 (reachable for this run).
+
+--------------------------------------------------------------------------------
+1. The milestone gate, standalone (Yield Phase's own execution, order-independent)
+--------------------------------------------------------------------------------
+$ .venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts= -v
+tests/qa/test_qap_ms004.py::test_tc003_untrusted_peer_refused_by_default PASSED [ 16%]
+tests/qa/test_qap_ms004.py::test_tc113_same_peer_accepted_with_optout PASSED [ 33%]
+tests/qa/test_qap_ms004.py::test_tc114_one_posture_governs_every_outbound_call PASSED [ 50%]
+tests/qa/test_qap_ms004.py::test_r5_trust_identity_pair_is_not_merged PASSED [ 66%]
+tests/qa/test_qap_ms004.py::test_r1_duplicate_flag_occurrence_honored_once PASSED [ 83%]
+tests/qa/test_qap_ms004.py::test_r1_upstream_url_shape_does_not_change_posture PASSED [100%]
+6 passed in 44.26s
+
+--------------------------------------------------------------------------------
+2. Observed paired evidence (first-party driver over the committed harness/peer/entry)
+--------------------------------------------------------------------------------
+===== posture default (no opt-out) | args=(none) | upstream=https://127.0.0.1:59188 =====
+peer cert control probe (before reset): answered=True detail='HTTP/1.1 200 OK\r\nServer: BaseHTTP/0.6 Python/3.13.8\r\nDate: M'
+internal call sites reached peer: False (after 20.131s)
+proxied POST /v1/messages -> HTTP 502
+  body[:220] = b'{"error": "Cannot connect to host 127.0.0.1:59188 ssl:True [SSLCertVerificationError: (1, \'[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1032)\')]"}'
+  peer's MARKER in caller body: False
+peer: completed paths   = []
+peer: counts            = {'/v1/models': 0, '/metrics': 0, '/v1/messages': 0}
+peer: handshake aborts  = 7 ['SSLEOFError [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of proto', ...]
+peer: request errors    = 0
+proxy: exit rc          = 0  (traceback in stderr: False)
+client: connectors      = 1 -> ssl_kwarg=True kwargs=['ssl']
+client: sessions        = 1 -> connector_kwarg=True ssl_kwarg=<absent>
+client: outbound calls  = ['/metrics', '/v1/messages', '/v1/models'] distinct connector ids=[4416203344]
+client: call_hook       = installed, total_calls=7
+calls leaving the gate's peer: none
+
+===== posture optout (--skip-tls-verify) | args=['--skip-tls-verify'] | upstream=https://127.0.0.1:59235 =====
+peer cert control probe (before reset): answered=True detail='HTTP/1.1 200 OK\r\nServer: BaseHTTP/0.6 Python/3.13.8\r\nDate: M'
+internal call sites reached peer: True (after 0.000s)
+proxied POST /v1/messages -> HTTP 200
+  body[:220] = b'{"id": "qa-peer-msg", "type": "message", "role": "assistant", "model": "qa-gate-model", "content": [{"type": "text", "text": "qa-ms004-peer-answered"}], "stop_reason": "end_turn", "usage": {"input_tokens": 1, "output_tok'
+  peer's MARKER in caller body: True
+peer: completed paths   = ['/metrics', '/v1/messages', '/v1/models']
+peer: counts            = {'/v1/models': 1, '/metrics': 1, '/v1/messages': 1}
+peer: handshake aborts  = 0 []
+peer: request errors    = 0
+proxy: exit rc          = 0  (traceback in stderr: False)
+client: connectors      = 1 -> ssl_kwarg=False kwargs=['ssl']
+client: sessions        = 1 -> connector_kwarg=True ssl_kwarg=<absent>
+client: outbound calls  = ['/metrics', '/v1/messages', '/v1/models'] distinct connector ids=[4443368016]
+client: call_hook       = installed, total_calls=3
+calls leaving the gate's peer: none
+
+Reading: the ONLY difference between the two runs is the flag. One connector in each,
+its `ssl` posture True / False; the same single session carries no `ssl` of its own; the
+peer serves all three outbound paths in one posture and none in the other; the caller's
+failure class in the default posture is SSLCertVerificationError /
+CERTIFICATE_VERIFY_FAILED (self-signed certificate), not a generic connect error; the
+process exits rc 0 with no traceback in both. W1 is excluded by the default half, W2 by
+the difference between the halves.
+Non-vacuity: the 20.13 s bound that produced "no completed request" in the default run is
+the identical bound under which the opt-out run served all three paths, so absence there
+is a refusal by every call site and not a short wait.
+
+--------------------------------------------------------------------------------
+3. Integration scope, one snapshot (shared-run with Check 6)
+--------------------------------------------------------------------------------
+$ .venv/bin/python -m pytest tests/qa -o addopts= -q -rs        -> 21 passed in 58.71s
+$ .venv/bin/python -m pytest tests/qa/test_qap_ms004.py tests/qa/test_qap_ms002.py \
+      -o addopts= -q                                            -> 21 passed in 58.88s
+$ .venv/bin/python -m pytest -q   (hermetic default, network-free)
+      301 passed, 23 warnings in 9.59s
+      Required test coverage of 80% reached. Total coverage: 93.88%
+QAP-MS002's 15 gates ran for real against the live remote upstream in both combined runs
+(reachable this session), so no gate in scope was skipped, deselected, or excused.
+tests/qa/ is excluded from the hermetic default run by norecursedirs (pyproject.toml:23),
+which is itself pinned by tests/test_pytest_config.py.

@@ -1,0 +1,977 @@
+FAIL-FIRST RUN — the CR2 wave's witnesses against the wave's base production bytes.
+production: 1c84ebd (Checkpoint 163 — every routed defect present: str(e) bodies, Content-Type-only answers, synthetic 502, unguarded setdefault)
+tests: the wave's final bytes (tests/test_routes_integration.py, tests/test_header_parity.py, tests/test_upstream_answer_relay.py)
+command: uv run pytest tests/test_routes_integration.py tests/test_header_parity.py tests/test_upstream_answer_relay.py -q -p no:cacheprovider --no-cov
+date: 2026-10-06T18:22:16Z
+
+.............F................................F..F..F................... [ 57%]
+.........................FFFFFFFFFFFFFFFF.FFFFFF......                   [100%]
+=================================== FAILURES ===================================
+_________ TestChatRoute.test_chat_nonstream_compatible_json_transforms _________
+
+self = <AsyncMock name='mock.read' id='4493991552'>
+
+    def assert_awaited_once(self):
+        """
+        Assert that the mock was awaited exactly once.
+        """
+        if not self.await_count == 1:
+            msg = (f"Expected {self._mock_name or 'mock'} to have been awaited once."
+                   f" Awaited {self.await_count} times.")
+>           raise AssertionError(msg)
+E           AssertionError: Expected read to have been awaited once. Awaited 0 times.
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:2364: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+self = <tests.test_routes_integration.TestChatRoute object at 0x10bab7b50>
+client = <aiohttp.test_utils.TestClient object at 0x10bd6e970>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bd020b0>
+
+    async def test_chat_nonstream_compatible_json_transforms(self, client, mocker):
+        upstream = _create_mock_response(
+            mocker, json_data={"choices": [{"message": {"content": "<think>reason</think>answer"}}]},
+            headers={"Content-Type": "application/problem+json"},
+        )
+        mocker.patch.object(client.server.app["session"], "post", return_value=upstream)
+        response = await client.post("/v1/chat/completions", json={"stream": False, "messages": []})
+        assert response.status == 200
+        assert json.loads(await response.read())["choices"][0]["message"]["content"] == "answer"
+        # The mechanism pin, re-aimed at the read-once shape: the non-stream arm reads the
+        # payload once and parses those bytes itself, so nothing asks for ``json()``. It
+        # used to be the only read, and that is why an unparseable answer could only ever
+        # become a proxy error. Transform coverage above, wiring here.
+>       upstream.read.assert_awaited_once()
+E       AssertionError: Expected read to have been awaited once. Awaited 0 times.
+
+tests/test_routes_integration.py:198: AssertionError
+_____________ TestIngressSites.test_end_to_end_names_survive[chat] _____________
+
+self = <tests.test_header_parity.TestIngressSites object at 0x10bb46780>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bc920d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bddfd40>
+site = {'attr': 'post', 'body': {'messages': [{'content': 'hi', 'role': 'user'}], 'model': 'm'}, 'method': 'POST', 'module': <module 'buster_ripper.routes.chat' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/chat.py'>, ...}
+
+    @pytest.mark.parametrize("site", INGRESS_SITES)
+    async def test_end_to_end_names_survive(self, proxy, mocker, site):
+        headers = {UPSTREAM_MARKER: "upstream", "Content-Type": "application/json",
+                   "Etag": '"abc"', "X-Custom-End-To-End": "keep-me"}
+        response = await _ingress_relay(proxy, mocker, site, {"headers": headers})
+>       assert _values(response.headers, UPSTREAM_MARKER) == ["upstream"]
+E       AssertionError: assert [] == ['upstream']
+E         
+E         Right contains one more item: 'upstream'
+E         Use -v to get more diff
+
+tests/test_header_parity.py:181: AssertionError
+_ TestIngressSites.test_site_calls_the_ingress_helper_on_the_upstream_mapping[chat] _
+
+self = <tests.test_header_parity.TestIngressSites object at 0x10bb27680>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bea4c50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10be47ba0>
+site = {'attr': 'post', 'body': {'messages': [{'content': 'hi', 'role': 'user'}], 'model': 'm'}, 'method': 'POST', 'module': <module 'buster_ripper.routes.chat' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/chat.py'>, ...}
+
+    @pytest.mark.parametrize("site", INGRESS_SITES)
+    async def test_site_calls_the_ingress_helper_on_the_upstream_mapping(
+        self, proxy, mocker, site
+    ):
+        """Direction pairing, response side: forward_headers would drop the relayed
+        Host too, and is the wrong helper for this boundary."""
+        spies = _spy_helpers(mocker, site["module"])
+        headers = {UPSTREAM_MARKER: "upstream", "Content-Type": "application/json", "Host": "up"}
+        response = await _ingress_relay(proxy, mocker, site, {"headers": headers})
+        assert response.status == 200
+>       assert spies["response_headers"].call_count == 1
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'response_headers'
+
+tests/test_header_parity.py:194: KeyError
+_ TestIngressSites.test_lying_upstream_content_length_never_reaches_the_client[chat] _
+
+self = <tests.test_header_parity.TestIngressSites object at 0x10bb6e300>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf247d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10be45160>
+site = {'attr': 'post', 'body': {'messages': [{'content': 'hi', 'role': 'user'}], 'model': 'm'}, 'method': 'POST', 'module': <module 'buster_ripper.routes.chat' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/chat.py'>, ...}
+
+    @pytest.mark.parametrize("site", INGRESS_SITES)
+    async def test_lying_upstream_content_length_never_reaches_the_client(
+        self, proxy, mocker, site
+    ):
+        """The content-length extension is load-bearing, not cosmetic: an upstream
+        that sends both framing headers must not have its length relayed, because
+        Response._start derives a length only when the header is absent. Without the
+        extension the client waits on 999 bytes and this fails on a timeout."""
+        body = b"0123456789ab"
+        headers = {UPSTREAM_MARKER: "upstream", "Content-Type": "application/json",
+                   "Transfer-Encoding": "chunked", "Content-Length": "999"}
+        response = await _ingress_relay(proxy, mocker, site, {
+            "headers": headers, "body": body,
+            "client_timeout": aiohttp.ClientTimeout(total=5)})
+        received = await response.read()
+>       assert received == body
+E       assert b'{"id": "m",...ext": "hi"}]}' == b'0123456789ab'
+E         
+E         At index 0 diff: b'{' != b'0'
+E         Use -v to get more diff
+
+tests/test_header_parity.py:214: AssertionError
+_ TestTransformPathHeaderParity.test_upstream_end_to_end_names_reach_the_caller[unfixed-body] _
+
+self = <tests.test_upstream_answer_relay.TestTransformPathHeaderParity object at 0x10bc347d0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10befa7d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf3cd50>
+content = 'plain answer', rewritten = False
+
+    @pytest.mark.parametrize("content, rewritten", [
+        pytest.param("plain answer", False, id="unfixed-body"),
+        pytest.param("<think>why</think>answer", True, id="fixed-body"),
+    ])
+    async def test_upstream_end_to_end_names_reach_the_caller(self, proxy, mocker, content,
+                                                             rewritten):
+        """Both paths rebuilt the answer with ``Content-Type`` alone, so a caller could
+        not correlate a request id or honor a retry hint. ``rewritten`` records which
+        path the answer takes, derived from the body rather than asserted blind."""
+        mocker.patch.object(config, "EVAL_MODE", False)
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(headers=_JSON_HEADERS, body=_answer(content)))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+        payload = json.loads(await response.read())
+    
+        expected = "answer" if rewritten else content
+        assert response.status == 200
+>       assert payload["choices"][0]["message"]["content"] == expected
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'choices'
+
+tests/test_upstream_answer_relay.py:94: KeyError
+_ TestTransformPathHeaderParity.test_upstream_end_to_end_names_reach_the_caller[fixed-body] _
+
+self = <tests.test_upstream_answer_relay.TestTransformPathHeaderParity object at 0x10bc34910>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf75550>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10be45160>
+content = '<think>why</think>answer', rewritten = True
+
+    @pytest.mark.parametrize("content, rewritten", [
+        pytest.param("plain answer", False, id="unfixed-body"),
+        pytest.param("<think>why</think>answer", True, id="fixed-body"),
+    ])
+    async def test_upstream_end_to_end_names_reach_the_caller(self, proxy, mocker, content,
+                                                             rewritten):
+        """Both paths rebuilt the answer with ``Content-Type`` alone, so a caller could
+        not correlate a request id or honor a retry hint. ``rewritten`` records which
+        path the answer takes, derived from the body rather than asserted blind."""
+        mocker.patch.object(config, "EVAL_MODE", False)
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(headers=_JSON_HEADERS, body=_answer(content)))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+        payload = json.loads(await response.read())
+    
+        expected = "answer" if rewritten else content
+        assert response.status == 200
+>       assert payload["choices"][0]["message"]["content"] == expected
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'choices'
+
+tests/test_upstream_answer_relay.py:94: KeyError
+_ TestTransformPathHeaderParity.test_a_rewritten_body_carries_the_length_of_what_is_sent _
+
+self = <tests.test_upstream_answer_relay.TestTransformPathHeaderParity object at 0x10bb46ea0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf101d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bddfd40>
+
+    async def test_a_rewritten_body_carries_the_length_of_what_is_sent(self, proxy, mocker):
+        """The transform path's body is not upstream's, so the relayed ``content-length``
+        must be the dropped-and-derived one: a lying upstream length would leave the
+        caller waiting for bytes that never come."""
+        mocker.patch.object(config, "EVAL_MODE", False)
+        body = _answer("<think>why</think>answer")
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(headers={**_JSON_HEADERS,
+                                                               "Content-Length": "999"},
+                                                      body=body))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+        received = await response.read()
+    
+>       assert json.loads(received)["choices"][0]["message"]["content"] == "answer"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'choices'
+
+tests/test_upstream_answer_relay.py:112: KeyError
+_ TestNonJsonRelay.test_upstream_status_bytes_and_headers_all_travel[gateway-html-502] _
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bc34a50>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf108d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0ca10>
+case = (502, 'text/html; charset=utf-8', b'<html><body>502 Bad Gateway</body></html>')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param((502, "text/html; charset=utf-8",
+                      b"<html><body>502 Bad Gateway</body></html>"), id="gateway-html-502"),
+        pytest.param((429, "text/plain", b"rate limit exceeded, retry later\n"),
+                     id="plaintext-429"),
+        pytest.param((200, "application/json", b'{"choices": ['), id="truncated-json"),
+        pytest.param((200, "application/json", b""), id="empty-body"),
+        pytest.param((503, "application/json", b"\xff\xfe"), id="undecodable-bytes"),
+    ])
+    async def test_upstream_status_bytes_and_headers_all_travel(self, proxy, mocker, case):
+        """The synthetic 502 erased all three at once: upstream's gateway status became
+        the proxy's, its HTML became a JSON error, and its headers vanished."""
+        status, content_type, payload = case
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=status,
+                                                      headers={"Content-Type": content_type,
+                                                               "Retry-After": "7"},
+                                                      body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == status, "the proxy answered for the upstream"
+>       assert await response.read() == payload, "the upstream's bytes were replaced"
+E       AssertionError: the upstream's bytes were replaced
+E       assert b'{"id": "m",...ext": "hi"}]}' == b'<html><body.../body></html>'
+E         
+E         At index 0 diff: b'{' != b'<'
+E         Use -v to get more diff
+
+tests/test_upstream_answer_relay.py:149: AssertionError
+_ TestNonJsonRelay.test_upstream_status_bytes_and_headers_all_travel[plaintext-429] _
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bc34b90>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf128d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10be453d0>
+case = (429, 'text/plain', b'rate limit exceeded, retry later\n')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param((502, "text/html; charset=utf-8",
+                      b"<html><body>502 Bad Gateway</body></html>"), id="gateway-html-502"),
+        pytest.param((429, "text/plain", b"rate limit exceeded, retry later\n"),
+                     id="plaintext-429"),
+        pytest.param((200, "application/json", b'{"choices": ['), id="truncated-json"),
+        pytest.param((200, "application/json", b""), id="empty-body"),
+        pytest.param((503, "application/json", b"\xff\xfe"), id="undecodable-bytes"),
+    ])
+    async def test_upstream_status_bytes_and_headers_all_travel(self, proxy, mocker, case):
+        """The synthetic 502 erased all three at once: upstream's gateway status became
+        the proxy's, its HTML became a JSON error, and its headers vanished."""
+        status, content_type, payload = case
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=status,
+                                                      headers={"Content-Type": content_type,
+                                                               "Retry-After": "7"},
+                                                      body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == status, "the proxy answered for the upstream"
+>       assert await response.read() == payload, "the upstream's bytes were replaced"
+E       AssertionError: the upstream's bytes were replaced
+E       assert b'{"id": "m",...ext": "hi"}]}' == b'rate limit ...retry later\n'
+E         
+E         At index 0 diff: b'{' != b'r'
+E         Use -v to get more diff
+
+tests/test_upstream_answer_relay.py:149: AssertionError
+_ TestNonJsonRelay.test_upstream_status_bytes_and_headers_all_travel[truncated-json] _
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bb47100>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c2e40d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0cef0>
+case = (200, 'application/json', b'{"choices": [')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param((502, "text/html; charset=utf-8",
+                      b"<html><body>502 Bad Gateway</body></html>"), id="gateway-html-502"),
+        pytest.param((429, "text/plain", b"rate limit exceeded, retry later\n"),
+                     id="plaintext-429"),
+        pytest.param((200, "application/json", b'{"choices": ['), id="truncated-json"),
+        pytest.param((200, "application/json", b""), id="empty-body"),
+        pytest.param((503, "application/json", b"\xff\xfe"), id="undecodable-bytes"),
+    ])
+    async def test_upstream_status_bytes_and_headers_all_travel(self, proxy, mocker, case):
+        """The synthetic 502 erased all three at once: upstream's gateway status became
+        the proxy's, its HTML became a JSON error, and its headers vanished."""
+        status, content_type, payload = case
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=status,
+                                                      headers={"Content-Type": content_type,
+                                                               "Retry-After": "7"},
+                                                      body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == status, "the proxy answered for the upstream"
+>       assert await response.read() == payload, "the upstream's bytes were replaced"
+E       AssertionError: the upstream's bytes were replaced
+E       assert b'{"id": "m",...ext": "hi"}]}' == b'{"choices": ['
+E         
+E         At index 2 diff: b'i' != b'c'
+E         Use -v to get more diff
+
+tests/test_upstream_answer_relay.py:149: AssertionError
+_ TestNonJsonRelay.test_upstream_status_bytes_and_headers_all_travel[empty-body] _
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bb47230>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c2e54d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0ec30>
+case = (200, 'application/json', b'')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param((502, "text/html; charset=utf-8",
+                      b"<html><body>502 Bad Gateway</body></html>"), id="gateway-html-502"),
+        pytest.param((429, "text/plain", b"rate limit exceeded, retry later\n"),
+                     id="plaintext-429"),
+        pytest.param((200, "application/json", b'{"choices": ['), id="truncated-json"),
+        pytest.param((200, "application/json", b""), id="empty-body"),
+        pytest.param((503, "application/json", b"\xff\xfe"), id="undecodable-bytes"),
+    ])
+    async def test_upstream_status_bytes_and_headers_all_travel(self, proxy, mocker, case):
+        """The synthetic 502 erased all three at once: upstream's gateway status became
+        the proxy's, its HTML became a JSON error, and its headers vanished."""
+        status, content_type, payload = case
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=status,
+                                                      headers={"Content-Type": content_type,
+                                                               "Retry-After": "7"},
+                                                      body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == status, "the proxy answered for the upstream"
+>       assert await response.read() == payload, "the upstream's bytes were replaced"
+E       AssertionError: the upstream's bytes were replaced
+E       assert b'{"id": "m",...ext": "hi"}]}' == b''
+E         
+E         Use -v to get more diff
+
+tests/test_upstream_answer_relay.py:149: AssertionError
+_ TestNonJsonRelay.test_upstream_status_bytes_and_headers_all_travel[undecodable-bytes] _
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bc615b0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c2e7250>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0c940>
+case = (503, 'application/json', b'\xff\xfe')
+
+    @pytest.mark.parametrize("case", [
+        pytest.param((502, "text/html; charset=utf-8",
+                      b"<html><body>502 Bad Gateway</body></html>"), id="gateway-html-502"),
+        pytest.param((429, "text/plain", b"rate limit exceeded, retry later\n"),
+                     id="plaintext-429"),
+        pytest.param((200, "application/json", b'{"choices": ['), id="truncated-json"),
+        pytest.param((200, "application/json", b""), id="empty-body"),
+        pytest.param((503, "application/json", b"\xff\xfe"), id="undecodable-bytes"),
+    ])
+    async def test_upstream_status_bytes_and_headers_all_travel(self, proxy, mocker, case):
+        """The synthetic 502 erased all three at once: upstream's gateway status became
+        the proxy's, its HTML became a JSON error, and its headers vanished."""
+        status, content_type, payload = case
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(status=status,
+                                                      headers={"Content-Type": content_type,
+                                                               "Retry-After": "7"},
+                                                      body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == status, "the proxy answered for the upstream"
+>       assert await response.read() == payload, "the upstream's bytes were replaced"
+E       AssertionError: the upstream's bytes were replaced
+E       assert b'{"id": "m",...ext": "hi"}]}' == b'\xff\xfe'
+E         
+E         At index 0 diff: b'{' != b'\xff'
+E         Use -v to get more diff
+
+tests/test_upstream_answer_relay.py:149: AssertionError
+___ TestNonJsonRelay.test_json_that_is_not_an_object_relayed_verbatim[null] ____
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bc54270>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c308550>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c2bb5f0>
+payload = b'null'
+
+    @pytest.mark.parametrize("payload", [b"null", b"[1, 2]", b'"a string"'])
+    async def test_json_that_is_not_an_object_relayed_verbatim(self, proxy, mocker, payload):
+        """The boundary the corpus ends at: these parse, so they take the transform path,
+        whose ``resp_data.get`` raises and is swallowed as it always did — and a JSON
+        ``null`` parses to ``None``, which shares the relay rather than inventing a body.
+        """
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(headers=_JSON_HEADERS, body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == 200
+>       assert json.loads(await response.read()) == json.loads(payload)
+E       assert {'content': [{'text': 'hi', 'type': 'text'}], 'id': 'm'} == None
+E        +  where {'content': [{'text': 'hi', 'type': 'text'}], 'id': 'm'} = <function loads at 0x1059c4f40>(b'{"id": "m", "content": [{"type": "text", "text": "hi"}]}')
+E        +    where <function loads at 0x1059c4f40> = json.loads
+E        +  and   None = <function loads at 0x1059c4f40>(b'null')
+E        +    where <function loads at 0x1059c4f40> = json.loads
+
+tests/test_upstream_answer_relay.py:165: AssertionError
+__ TestNonJsonRelay.test_json_that_is_not_an_object_relayed_verbatim[[1, 2]] ___
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bc54380>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c30a5d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0fc70>
+payload = b'[1, 2]'
+
+    @pytest.mark.parametrize("payload", [b"null", b"[1, 2]", b'"a string"'])
+    async def test_json_that_is_not_an_object_relayed_verbatim(self, proxy, mocker, payload):
+        """The boundary the corpus ends at: these parse, so they take the transform path,
+        whose ``resp_data.get`` raises and is swallowed as it always did — and a JSON
+        ``null`` parses to ``None``, which shares the relay rather than inventing a body.
+        """
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(headers=_JSON_HEADERS, body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == 200
+>       assert json.loads(await response.read()) == json.loads(payload)
+E       AssertionError: assert {'content': [...}], 'id': 'm'} == [1, 2]
+E         
+E         Use -v to get more diff
+
+tests/test_upstream_answer_relay.py:165: AssertionError
+_ TestNonJsonRelay.test_json_that_is_not_an_object_relayed_verbatim["a string"] _
+
+self = <tests.test_upstream_answer_relay.TestNonJsonRelay object at 0x10bbd4c50>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c30bf50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf3cd50>
+payload = b'"a string"'
+
+    @pytest.mark.parametrize("payload", [b"null", b"[1, 2]", b'"a string"'])
+    async def test_json_that_is_not_an_object_relayed_verbatim(self, proxy, mocker, payload):
+        """The boundary the corpus ends at: these parse, so they take the transform path,
+        whose ``resp_data.get`` raises and is swallowed as it always did — and a JSON
+        ``null`` parses to ``None``, which shares the relay rather than inventing a body.
+        """
+        mocker.patch.object(proxy.server.app["session"], "post",
+                            return_value=StubUpstream(headers=_JSON_HEADERS, body=payload))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+        assert response.status == 200
+>       assert json.loads(await response.read()) == json.loads(payload)
+E       assert {'content': [{'text': 'hi', 'type': 'text'}], 'id': 'm'} == 'a string'
+E        +  where {'content': [{'text': 'hi', 'type': 'text'}], 'id': 'm'} = <function loads at 0x1059c4f40>(b'{"id": "m", "content": [{"type": "text", "text": "hi"}]}')
+E        +    where <function loads at 0x1059c4f40> = json.loads
+E        +  and   'a string' = <function loads at 0x1059c4f40>(b'"a string"')
+E        +    where <function loads at 0x1059c4f40> = json.loads
+
+tests/test_upstream_answer_relay.py:165: AssertionError
+_ TestOverflowArmPreserved.test_a_parseable_4xx_overflow_still_drives_the_retry_loop _
+
+self = <tests.test_upstream_answer_relay.TestOverflowArmPreserved object at 0x10bc34cd0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c2e6a50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0dcc0>
+
+    async def test_a_parseable_4xx_overflow_still_drives_the_retry_loop(self, proxy, mocker):
+        """``_raise_chat_overflow`` used to be handed ``resp.json()``'s product; it is now
+        handed the product of one ``read()`` plus a parse. If that wiring broke, the
+        overflow would never be seen and the answer would go upstream-only: three
+        upstream calls is what the retry loop owes (``max_retries = 2``)."""
+        mocker.patch.object(backend, "get_backend_state", return_value="sglang")
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream(status=400,
+                                                             headers=_JSON_HEADERS,
+                                                             body=_OVERFLOW))
+    
+        response = await proxy.post("/v1/chat/completions", json=_CHAT)
+    
+>       assert post.call_count == 3, "the overflow retry loop did not run"
+E       AssertionError: the overflow retry loop did not run
+E       assert 1 == 3
+E        +  where 1 = <MagicMock name='post' id='4493991888'>.call_count
+
+tests/test_upstream_answer_relay.py:185: AssertionError
+_ TestLeakFreeErrorBodies.test_the_502_names_no_upstream_topology[chat-non-stream] _
+
+self = <tests.test_upstream_answer_relay.TestLeakFreeErrorBodies object at 0x10bc34e10>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c2e6350>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c381300>
+arm = ('post', 'POST', '/v1/chat/completions', {'messages': [{'content': 'hi', 'role': 'user'}], 'model': 'm'})
+
+    @pytest.mark.parametrize("arm", [
+        pytest.param(("post", "POST", "/v1/chat/completions", _CHAT), id="chat-non-stream"),
+        pytest.param(("post", "POST", "/v1/messages", {**_MESSAGES, "stream": True}),
+                     id="messages-stream"),
+        pytest.param(("post", "POST", "/v1/messages", _MESSAGES), id="messages-non-stream"),
+        pytest.param(("request", "GET", "/v1/models", None), id="passthrough"),
+    ])
+    async def test_the_502_names_no_upstream_topology(self, proxy, mocker, arm):
+        attr, method, path, body = arm
+        self._refuse_the_upstream(proxy, mocker, attr)
+        kwargs = {"json": body} if body is not None else {}
+    
+        response = await proxy.request(method, path, **kwargs)
+        text = (await response.read()).decode()
+    
+        assert response.status == 502
+>       assert _upstream_authority() not in text, f"upstream host:port reached the client: {text}"
+E       AssertionError: upstream host:port reached the client: {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E       assert 'localhost:30000' not in '{"error": "...on refused"}'
+E         
+E         'localhost:30000' is contained here:
+E           {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E         ?                                   +++++++++++++++
+
+tests/test_upstream_answer_relay.py:216: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:chat.py:154 Upstream error: Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused
+_ TestLeakFreeErrorBodies.test_the_502_names_no_upstream_topology[messages-stream] _
+
+self = <tests.test_upstream_answer_relay.TestLeakFreeErrorBodies object at 0x10bc34f50>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf116d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c2bac30>
+arm = ('post', 'POST', '/v1/messages', {'max_tokens': 10, 'messages': [{'content': 'hi', 'role': 'user'}], 'model': 'm', 'stream': True})
+
+    @pytest.mark.parametrize("arm", [
+        pytest.param(("post", "POST", "/v1/chat/completions", _CHAT), id="chat-non-stream"),
+        pytest.param(("post", "POST", "/v1/messages", {**_MESSAGES, "stream": True}),
+                     id="messages-stream"),
+        pytest.param(("post", "POST", "/v1/messages", _MESSAGES), id="messages-non-stream"),
+        pytest.param(("request", "GET", "/v1/models", None), id="passthrough"),
+    ])
+    async def test_the_502_names_no_upstream_topology(self, proxy, mocker, arm):
+        attr, method, path, body = arm
+        self._refuse_the_upstream(proxy, mocker, attr)
+        kwargs = {"json": body} if body is not None else {}
+    
+        response = await proxy.request(method, path, **kwargs)
+        text = (await response.read()).decode()
+    
+        assert response.status == 502
+>       assert _upstream_authority() not in text, f"upstream host:port reached the client: {text}"
+E       AssertionError: upstream host:port reached the client: {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E       assert 'localhost:30000' not in '{"error": "...on refused"}'
+E         
+E         'localhost:30000' is contained here:
+E           {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E         ?                                   +++++++++++++++
+
+tests/test_upstream_answer_relay.py:216: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:messages.py:164 Upstream error: Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused
+_ TestLeakFreeErrorBodies.test_the_502_names_no_upstream_topology[messages-non-stream] _
+
+self = <tests.test_upstream_answer_relay.TestLeakFreeErrorBodies object at 0x10bb47360>
+proxy = <aiohttp.test_utils.TestClient object at 0x10bf74c50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bf0d710>
+arm = ('post', 'POST', '/v1/messages', {'max_tokens': 10, 'messages': [{'content': 'hi', 'role': 'user'}], 'model': 'm'})
+
+    @pytest.mark.parametrize("arm", [
+        pytest.param(("post", "POST", "/v1/chat/completions", _CHAT), id="chat-non-stream"),
+        pytest.param(("post", "POST", "/v1/messages", {**_MESSAGES, "stream": True}),
+                     id="messages-stream"),
+        pytest.param(("post", "POST", "/v1/messages", _MESSAGES), id="messages-non-stream"),
+        pytest.param(("request", "GET", "/v1/models", None), id="passthrough"),
+    ])
+    async def test_the_502_names_no_upstream_topology(self, proxy, mocker, arm):
+        attr, method, path, body = arm
+        self._refuse_the_upstream(proxy, mocker, attr)
+        kwargs = {"json": body} if body is not None else {}
+    
+        response = await proxy.request(method, path, **kwargs)
+        text = (await response.read()).decode()
+    
+        assert response.status == 502
+>       assert _upstream_authority() not in text, f"upstream host:port reached the client: {text}"
+E       AssertionError: upstream host:port reached the client: {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E       assert 'localhost:30000' not in '{"error": "...on refused"}'
+E         
+E         'localhost:30000' is contained here:
+E           {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E         ?                                   +++++++++++++++
+
+tests/test_upstream_answer_relay.py:216: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:messages.py:297 Upstream error: Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused
+_ TestLeakFreeErrorBodies.test_the_502_names_no_upstream_topology[passthrough] _
+
+self = <tests.test_upstream_answer_relay.TestLeakFreeErrorBodies object at 0x10bb47490>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c3604d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c381a50>
+arm = ('request', 'GET', '/v1/models', None)
+
+    @pytest.mark.parametrize("arm", [
+        pytest.param(("post", "POST", "/v1/chat/completions", _CHAT), id="chat-non-stream"),
+        pytest.param(("post", "POST", "/v1/messages", {**_MESSAGES, "stream": True}),
+                     id="messages-stream"),
+        pytest.param(("post", "POST", "/v1/messages", _MESSAGES), id="messages-non-stream"),
+        pytest.param(("request", "GET", "/v1/models", None), id="passthrough"),
+    ])
+    async def test_the_502_names_no_upstream_topology(self, proxy, mocker, arm):
+        attr, method, path, body = arm
+        self._refuse_the_upstream(proxy, mocker, attr)
+        kwargs = {"json": body} if body is not None else {}
+    
+        response = await proxy.request(method, path, **kwargs)
+        text = (await response.read()).decode()
+    
+        assert response.status == 502
+>       assert _upstream_authority() not in text, f"upstream host:port reached the client: {text}"
+E       AssertionError: upstream host:port reached the client: {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E       assert 'localhost:30000' not in '{"error": "...on refused"}'
+E         
+E         'localhost:30000' is contained here:
+E           {"error": "Cannot connect to host localhost:30000 ssl:default [Errno 111] Connection refused"}
+E         ?                                   +++++++++++++++
+
+tests/test_upstream_answer_relay.py:216: AssertionError
+_ TestPreservedThinkingGuard.test_a_non_mapping_is_replaced_and_the_pair_goes_out[null] _
+
+self = <tests.test_upstream_answer_relay.TestPreservedThinkingGuard object at 0x10bc35090>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c3636d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c38dbf0>, value = None
+
+    @pytest.mark.parametrize("value", [
+        pytest.param(None, id="null"),
+        pytest.param([], id="empty-list"),
+        pytest.param([{"enable_thinking": False}], id="list-of-mappings"),
+        pytest.param("enable", id="string-scalar"),
+        pytest.param(7, id="number-scalar"),
+        pytest.param(True, id="boolean-scalar"),
+    ])
+    async def test_a_non_mapping_is_replaced_and_the_pair_goes_out(self, proxy, mocker, value):
+        """The shipped launcher default, at the route level: pre-guard this is an
+        ``AttributeError`` out of ``handle_messages`` — HTTP 500 and no upstream call."""
+        mocker.patch.object(config, "PRESERVED_THINKING", True)
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES,
+                                                          "chat_template_kwargs": value})
+    
+>       assert response.status == 200, "the route 500ed on a caller-supplied field"
+E       AssertionError: the route 500ed on a caller-supplied field
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:50397/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 18:22:17 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:255: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 46, in handle_messages
+    _inject_preserved_thinking(body)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 75, in _inject_preserved_thinking
+    kwargs.setdefault("enable_thinking", True)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'setdefault'
+_ TestPreservedThinkingGuard.test_a_non_mapping_is_replaced_and_the_pair_goes_out[empty-list] _
+
+self = <tests.test_upstream_answer_relay.TestPreservedThinkingGuard object at 0x10bc351d0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c3729d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c2bb1e0>, value = []
+
+    @pytest.mark.parametrize("value", [
+        pytest.param(None, id="null"),
+        pytest.param([], id="empty-list"),
+        pytest.param([{"enable_thinking": False}], id="list-of-mappings"),
+        pytest.param("enable", id="string-scalar"),
+        pytest.param(7, id="number-scalar"),
+        pytest.param(True, id="boolean-scalar"),
+    ])
+    async def test_a_non_mapping_is_replaced_and_the_pair_goes_out(self, proxy, mocker, value):
+        """The shipped launcher default, at the route level: pre-guard this is an
+        ``AttributeError`` out of ``handle_messages`` — HTTP 500 and no upstream call."""
+        mocker.patch.object(config, "PRESERVED_THINKING", True)
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES,
+                                                          "chat_template_kwargs": value})
+    
+>       assert response.status == 200, "the route 500ed on a caller-supplied field"
+E       AssertionError: the route 500ed on a caller-supplied field
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:50401/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 18:22:17 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:255: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 46, in handle_messages
+    _inject_preserved_thinking(body)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 75, in _inject_preserved_thinking
+    kwargs.setdefault("enable_thinking", True)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'setdefault'
+_ TestPreservedThinkingGuard.test_a_non_mapping_is_replaced_and_the_pair_goes_out[list-of-mappings] _
+
+self = <tests.test_upstream_answer_relay.TestPreservedThinkingGuard object at 0x10bb475c0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c369250>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c37cc80>
+value = [{'enable_thinking': False}]
+
+    @pytest.mark.parametrize("value", [
+        pytest.param(None, id="null"),
+        pytest.param([], id="empty-list"),
+        pytest.param([{"enable_thinking": False}], id="list-of-mappings"),
+        pytest.param("enable", id="string-scalar"),
+        pytest.param(7, id="number-scalar"),
+        pytest.param(True, id="boolean-scalar"),
+    ])
+    async def test_a_non_mapping_is_replaced_and_the_pair_goes_out(self, proxy, mocker, value):
+        """The shipped launcher default, at the route level: pre-guard this is an
+        ``AttributeError`` out of ``handle_messages`` — HTTP 500 and no upstream call."""
+        mocker.patch.object(config, "PRESERVED_THINKING", True)
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES,
+                                                          "chat_template_kwargs": value})
+    
+>       assert response.status == 200, "the route 500ed on a caller-supplied field"
+E       AssertionError: the route 500ed on a caller-supplied field
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:50405/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 18:22:17 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:255: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 46, in handle_messages
+    _inject_preserved_thinking(body)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 75, in _inject_preserved_thinking
+    kwargs.setdefault("enable_thinking", True)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'setdefault'
+_ TestPreservedThinkingGuard.test_a_non_mapping_is_replaced_and_the_pair_goes_out[string-scalar] _
+
+self = <tests.test_upstream_answer_relay.TestPreservedThinkingGuard object at 0x10bb476f0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c368ed0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c36c2c0>
+value = 'enable'
+
+    @pytest.mark.parametrize("value", [
+        pytest.param(None, id="null"),
+        pytest.param([], id="empty-list"),
+        pytest.param([{"enable_thinking": False}], id="list-of-mappings"),
+        pytest.param("enable", id="string-scalar"),
+        pytest.param(7, id="number-scalar"),
+        pytest.param(True, id="boolean-scalar"),
+    ])
+    async def test_a_non_mapping_is_replaced_and_the_pair_goes_out(self, proxy, mocker, value):
+        """The shipped launcher default, at the route level: pre-guard this is an
+        ``AttributeError`` out of ``handle_messages`` — HTTP 500 and no upstream call."""
+        mocker.patch.object(config, "PRESERVED_THINKING", True)
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES,
+                                                          "chat_template_kwargs": value})
+    
+>       assert response.status == 200, "the route 500ed on a caller-supplied field"
+E       AssertionError: the route 500ed on a caller-supplied field
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:50409/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 18:22:17 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:255: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 46, in handle_messages
+    _inject_preserved_thinking(body)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 75, in _inject_preserved_thinking
+    kwargs.setdefault("enable_thinking", True)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'setdefault'
+_ TestPreservedThinkingGuard.test_a_non_mapping_is_replaced_and_the_pair_goes_out[number-scalar] _
+
+self = <tests.test_upstream_answer_relay.TestPreservedThinkingGuard object at 0x10bb9d5b0>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c36a4d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c38c2c0>, value = 7
+
+    @pytest.mark.parametrize("value", [
+        pytest.param(None, id="null"),
+        pytest.param([], id="empty-list"),
+        pytest.param([{"enable_thinking": False}], id="list-of-mappings"),
+        pytest.param("enable", id="string-scalar"),
+        pytest.param(7, id="number-scalar"),
+        pytest.param(True, id="boolean-scalar"),
+    ])
+    async def test_a_non_mapping_is_replaced_and_the_pair_goes_out(self, proxy, mocker, value):
+        """The shipped launcher default, at the route level: pre-guard this is an
+        ``AttributeError`` out of ``handle_messages`` — HTTP 500 and no upstream call."""
+        mocker.patch.object(config, "PRESERVED_THINKING", True)
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES,
+                                                          "chat_template_kwargs": value})
+    
+>       assert response.status == 200, "the route 500ed on a caller-supplied field"
+E       AssertionError: the route 500ed on a caller-supplied field
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:50413/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 18:22:17 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:255: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 46, in handle_messages
+    _inject_preserved_thinking(body)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 75, in _inject_preserved_thinking
+    kwargs.setdefault("enable_thinking", True)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'setdefault'
+_ TestPreservedThinkingGuard.test_a_non_mapping_is_replaced_and_the_pair_goes_out[boolean-scalar] _
+
+self = <tests.test_upstream_answer_relay.TestPreservedThinkingGuard object at 0x10b87f240>
+proxy = <aiohttp.test_utils.TestClient object at 0x10c36b3d0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10c394600>, value = True
+
+    @pytest.mark.parametrize("value", [
+        pytest.param(None, id="null"),
+        pytest.param([], id="empty-list"),
+        pytest.param([{"enable_thinking": False}], id="list-of-mappings"),
+        pytest.param("enable", id="string-scalar"),
+        pytest.param(7, id="number-scalar"),
+        pytest.param(True, id="boolean-scalar"),
+    ])
+    async def test_a_non_mapping_is_replaced_and_the_pair_goes_out(self, proxy, mocker, value):
+        """The shipped launcher default, at the route level: pre-guard this is an
+        ``AttributeError`` out of ``handle_messages`` — HTTP 500 and no upstream call."""
+        mocker.patch.object(config, "PRESERVED_THINKING", True)
+        post = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.post("/v1/messages", json={**_MESSAGES,
+                                                          "chat_template_kwargs": value})
+    
+>       assert response.status == 200, "the route 500ed on a caller-supplied field"
+E       AssertionError: the route 500ed on a caller-supplied field
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:50417/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 18:22:17 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_upstream_answer_relay.py:255: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 46, in handle_messages
+    _inject_preserved_thinking(body)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 75, in _inject_preserved_thinking
+    kwargs.setdefault("enable_thinking", True)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'setdefault'
+=========================== short test summary info ============================
+FAILED tests/test_routes_integration.py::TestChatRoute::test_chat_nonstream_compatible_json_transforms
+FAILED tests/test_header_parity.py::TestIngressSites::test_end_to_end_names_survive[chat]
+FAILED tests/test_header_parity.py::TestIngressSites::test_site_calls_the_ingress_helper_on_the_upstream_mapping[chat]
+FAILED tests/test_header_parity.py::TestIngressSites::test_lying_upstream_content_length_never_reaches_the_client[chat]
+FAILED tests/test_upstream_answer_relay.py::TestTransformPathHeaderParity::test_upstream_end_to_end_names_reach_the_caller[unfixed-body]
+FAILED tests/test_upstream_answer_relay.py::TestTransformPathHeaderParity::test_upstream_end_to_end_names_reach_the_caller[fixed-body]
+FAILED tests/test_upstream_answer_relay.py::TestTransformPathHeaderParity::test_a_rewritten_body_carries_the_length_of_what_is_sent
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_upstream_status_bytes_and_headers_all_travel[gateway-html-502]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_upstream_status_bytes_and_headers_all_travel[plaintext-429]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_upstream_status_bytes_and_headers_all_travel[truncated-json]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_upstream_status_bytes_and_headers_all_travel[empty-body]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_upstream_status_bytes_and_headers_all_travel[undecodable-bytes]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_json_that_is_not_an_object_relayed_verbatim[null]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_json_that_is_not_an_object_relayed_verbatim[[1, 2]]
+FAILED tests/test_upstream_answer_relay.py::TestNonJsonRelay::test_json_that_is_not_an_object_relayed_verbatim["a string"]
+FAILED tests/test_upstream_answer_relay.py::TestOverflowArmPreserved::test_a_parseable_4xx_overflow_still_drives_the_retry_loop
+FAILED tests/test_upstream_answer_relay.py::TestLeakFreeErrorBodies::test_the_502_names_no_upstream_topology[chat-non-stream]
+FAILED tests/test_upstream_answer_relay.py::TestLeakFreeErrorBodies::test_the_502_names_no_upstream_topology[messages-stream]
+FAILED tests/test_upstream_answer_relay.py::TestLeakFreeErrorBodies::test_the_502_names_no_upstream_topology[messages-non-stream]
+FAILED tests/test_upstream_answer_relay.py::TestLeakFreeErrorBodies::test_the_502_names_no_upstream_topology[passthrough]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[null]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[empty-list]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[list-of-mappings]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[string-scalar]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[number-scalar]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[boolean-scalar]
+26 failed, 100 passed in 0.38s
+
+=== counterpart run: same test bytes against the extraction commit a4d1d26 (behavior-preserving move, no closure yet) ===
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[number-scalar]
+FAILED tests/test_upstream_answer_relay.py::TestPreservedThinkingGuard::test_a_non_mapping_is_replaced_and_the_pair_goes_out[boolean-scalar]
+26 failed, 100 passed in 0.38s
+
+=== green run: the wave's closure applied ===
+........................................................................ [ 57%]
+......................................................                   [100%]
+126 passed in 0.28s

@@ -1,0 +1,5 @@
+# QAP-MS001 measures at HEAD 0ac2a6555c9726d70fb4d98fc945bb49d959973f
+[TC-100] pre-flush snapshots=[(1.98, []), (2.29, []), (2.66, [])] turns=3 write_ops=1 write_bytes=1418
+.[TC-108 documented half] N=3 format=documented write_ops=6 write_bytes=1041 files=4 expected_ops=2N=6 expected_files=N+1=4
+.
+2 passed, 14 deselected in 5.10s

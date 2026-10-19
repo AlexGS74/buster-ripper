@@ -1,0 +1,243 @@
+T013 header-parity wave — replay evidence (Forward 066-01)
+Base at start 41d3fc6 (Checkpoint 130). Checkpoints: 131 c31d1ac (F-4) · 132 d0b1317 (G-1) ·
+133 96fe429 (G-2) · 134 bdd04c5 (test-side) · 135 35666d3 (session) · 136 3352d73 (report) ·
+137 50413d7 (test-cost consolidation). Production code is final at 133; 134/137 move tests only.
+
+=== F-4 done-when (1): rename-proof census over the five filter sites ===
+$ grep -rn "headers.items()" buster_ripper/routes/
+  -> zero matches
+$ grep -n ".items()" buster_ripper/utils.py   (the helpers are the only filters left)
+  22:        for k, v in headers.items()
+  38:        for k, v in upstream_headers.items()
+
+=== DC-S10-LAT-r1: direction pairing — 3 egress / 2 ingress call sites ===
+$ grep -rn "forward_headers(" buster_ripper/routes/
+  buster_ripper/routes/chat.py:105:    headers = forward_headers(request_headers)
+  buster_ripper/routes/messages.py:64:    headers = forward_headers(request.headers)
+  buster_ripper/routes/passthrough.py:17:    headers = forward_headers(request.headers)
+$ grep -rn "response_headers(" buster_ripper/routes/
+  buster_ripper/routes/messages.py:285:            resp_headers = response_headers(resp.headers)
+  buster_ripper/routes/passthrough.py:41:            resp_headers = response_headers(resp.headers)
+  (the bare names also sit on import lines: chat.py:14, messages.py:20/:22, passthrough.py:6)
+
+=== DC-S10-C4-r1: the proxy-authored response literals are untouched ===
+$ git diff 41d3fc6..HEAD -- buster_ripper/routes/chat.py | grep -E "^[+-].*(keep-alive|X-Accel-Buffering|Cache-Control|event-stream|application/json)"
+  -> no output: chat.py:159-164, :191, :200 unchanged
+$ git diff 41d3fc6..HEAD -- buster_ripper/routes/messages.py | grep -E "^[+-].*(Connection|X-Accel-Buffering|event-stream|Cache-Control)"
+  -> no output: the SSE header block's name fields are byte-identical
+  and none of the six is routed through response_headers:
+  -> chat.py does not even import it
+
+=== DC-claim-208-r1: the set is base parity, not a standard's enumeration ===
+$ sed -n "178,187p" buster_ripper_legacy.py
+  _HOP_BY_HOP = frozenset(
+      [
+          "connection",
+          "keep-alive",
+          "proxy-authenticate",
+          "proxy-authorization",
+          "te",
+          "trailers",
+          "transfer-encoding",
+          "upgrade",
+$ package set:
+   ['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'transfer-encoding', 'upgrade']
+  No Proxy-Connection added, trailers not respelled. The whole wave diff (code, tests, docs) and all
+  seven commit messages contain no citation of RFC 9110 or §7.6.1:
+  matches: 0
+  in commit messages: 0
+
+=== DC-claim-223-r1: the change set is the five sites and the chat rule ===
+   buster_ripper/routes/chat.py        | 39 +++++++++++------
+   buster_ripper/routes/messages.py    | 85 ++++++++++++++++++++++++-------------
+   buster_ripper/routes/passthrough.py | 10 ++---
+   buster_ripper/utils.py              | 11 ++++-
+   4 files changed, 95 insertions(+), 50 deletions(-)
+  server.py:  0 lines changed (no filter added to the metrics poll or any non-route outbound call)
+
+=== G-2 replay ===
+$ grep -n "convert/" REFACTORING_PLAN.md
+  7:(`buster_ripper/convert/`) is **not implemented**; it is listed under
+  42:**Nothing in this section is implemented**, including the `buster_ripper/convert/`
+  43:package that Phases 2-4 and Phase 6 name: no `convert/` directory, no
+  49:- [ ] Add `convert_stream_chunk()` function to `convert/anthropic_to_openai.py`
+  55:- [ ] Create `convert/openai_to_anthropic.py` for reverse conversion
+  73:- [ ] Unit tests for convert module (`convert/anthropic_to_openai.py`) — blocked on Phase 2
+  127:There is no `convert/` package; see §Remaining Work.
+  156:| `~/Projects/claude-relay/claude_proxy/convert_request.py` | — none yet | `buster_ripper/convert/anthropic_to_openai.py` is Phase 2/3 scope, not built |
+  159:| `~/Projects/claude-relay/claude_proxy/sse.py` | — none yet | `buster_ripper/convert/sse.py` is Phase 2 scope, not built; the shipped SSE helper is `utils.find_message_start` |
+$ sed -n 3p REFACTORING_PLAN.md
+  ## Status: aiohttp migration complete — the API-conversion package was never built
+$ paths the document claims under buster_ripper/ that do not exist:
+   none (the convert/ rows are the labelled future-work ones)
+
+=== DC-S10-C2-r1: what each parser backend hands the handler for two Authorization lines ===
+Raw socket, exact wire bytes. The aiohttp CLIENT collapses two Authorization lines
+before they reach the wire, which is why the witness needs a socket and not a client.
+
+  C  real-first  -> handler saw ['Bearer sk-real', 'Bearer ']
+  C  empty-first -> handler saw ['Bearer ', 'Bearer sk-real']
+  PY real-first  -> handler saw ['Bearer sk-real', 'Bearer']
+  PY empty-first -> handler saw ['Bearer', 'Bearer sk-real']
+
+The C parser canonicalizes a known name (_http_parser.pyx:98-105 and :382, over the
+hdrs-generated table in _headers.pxi) and leaves the value's trailing OWS alone; the
+pure-Python parser keeps the peer's spelling verbatim (http_parser.py:184, :235) and
+strips OWS. So forward_headers' plain-dict output collapses last-wins on one backend
+and not the other. Read against the pre-fix rule that is the two named failures: an
+empty bearer arriving second DELETES a real credential (C), and a real credential
+first LEAVES the empty bearer forwarded beside it (PY). Observed live while authoring,
+before the rule was rewritten: the forwarded mapping held no Authorization at all.
+
+=== Fail-first matrix: every witness family made to fail on a deliberately wrong build ===
+Applied to the final tree (post test-cost consolidation), each mutation run and reverted.
+
+M1  utils.response_headers WITHOUT the bound content-length extension
+    -> both ingress framing witnesses hang out the client's 5 s timeout on the relayed lying 999, plus the helper kept-set case
+M2  messages' egress site wired to response_headers (direction swap)
+    -> the pairing witness fires and so does the behavioural Host/Content-Length-absent check (DC-S10-LAT-r1)
+M3  routes/chat.py at 41d3fc6 (the Bearer rule decides from the collapsed dict)
+    -> DC-S10-C2-r1's fourth case, both backends, both orders, plus the unit-shape cases (DC-S10-C2-r1)
+M4  post-commit arm returns a fresh web.json_response(502) - today's defect
+    -> every terminal reports a second status line or a missing terminator; the attribution cases report no relay line at all (DC-S11-CE1-r1)
+M5  arm narrowed from except Exception to except aiohttp.ClientError
+    -> the non-ClientError half escapes again, and the structural one-catch-all witness fires (DC-S11-CE3-r1)
+M6  post-commit log text back to 'Upstream error: %s'
+    -> every position-not-cause witness (DC-S11-D8-r1)
+M7  abandonment path returns None instead of the committed response
+    -> finish_response turns the missing return into a 500 head inside the 200 body (DC-S11-CE1-r1)
+M8  routes/messages.py at Checkpoint 131 (pre-G-1) against the relay module
+    -> the regression baseline: 10 of the 12 relay witnesses fail on the bytes this member replaced; the two survivors are the success relay and the pre-commit 502, the halves the split must not change
+
+Not falsifiable, recorded rather than claimed: deleting the inner 'await response.write_eof()'
+changes no byte, because finish_response() performs the terminating write_eof for the
+returned committed object - which IS the mechanism DC-S11-CE1-r1 relies on. The termination
+witness does discriminate every wrong answer the ledger names (fresh object, None, raise-out).
+
+=== Test-cost audit (codify-test-cost) and the corrections it produced ===
+Applied to the tests this wave added, after checkpoints 131-133; landed at 137.
+
+Rule 6 (reuse the mechanics that exist) - this wave grew THREE stand-ins for the same
+upstream answer (one per module, each its own shape) and a proxy fixture that
+reimplemented tests/test_routes_integration.py's accepted `client`. Consolidated: one
+upstream stub in tests/upstream_stub.py, imported the way the QA gates import
+tests.qa.harness, and one `proxy` + one `raw_proxy` fixture in tests/conftest.py. The
+accepted module was left alone; migrating it onto the shared stub is filed as
+QB:test-routes/duplicate-upstream-stub rather than dragged into this wave's diff.
+
+Rule 4/5 (setup cost must not multiply by samples) - RawProxy.send ended every read on
+a 1.0-2.0 s idle window, so eleven tests each paid a second for a response that had
+already completed. It now ends at the chunked terminator, at EOF, or on an explicit
+Connection: close, and the window only bounds a build that never terminates - which is
+itself the thing G-1 witnesses.
+
+Rule 3 (one behaviour, one test) - three witnesses removed: a third header-spelling
+variant (two already straddle the canonical/verbatim boundary), a duplicate of the
+bare-timeout case, and an already-relayed-bytes case whose falsifier was the same wrong
+build M4 catches.
+
+Rule 1 (a test must be able to fail) - the first consolidation pass gave the stub an
+iter_any() on the response object instead of on its .content, so the relay died with
+AttributeError inside the arm and four terminal witnesses passed for the WRONG REASON
+(one head, terminator, no error turn: what the fix produces, for a cause that had
+nothing to do with the claim). Caught by re-running M8 against the pre-fix bytes, which
+is why the baseline run is part of this record and not just authoring scaffolding.
+
+Arity - no test or helper in this wave takes more than five parameters. The accepted
+suite carries zero "Too Many Parameters" reports; these four files carry zero.
+
+=== Cost, before -> after ===
+  the two witness modules   9.19 s -> 0.13 s   (uv run pytest tests/test_header_parity.py tests/test_stream_relay_commit.py)
+  the hermetic suite          19.5 s -> 10.2 s  (uv run pytest -q)
+  witnesses           72 -> 69   (57 F-4 + 12 G-1)
+  files     conftest.py 118 · upstream_stub.py 75 · test_header_parity.py 335 · test_stream_relay_commit.py 175
+
+=== Test evidence, final tree ===
+$ uv run pytest -q                       -> 370 passed, 23 warnings, coverage 94.20% (10.19 s)
+$ uv run pytest tests/qa/test_qap_ms004.py --no-cov -> 6 passed (run after F-4 and again after G-1)
+
+=== LNCP, measured ===
+  chat._prepare_headers                L:8  N:2 C:4        ->  no scanner issue at all
+  messages._stream_single_request      L:50 N:5 C:7 P:4   ->  L:30 N:2 C:3 P:4
+  messages._relay_after_commit (new)   L:9  N:1 C:3 P:4   (one gray)
+  messages._note_message_start (new)   no scanner issue
+  messages._non_stream_single_request  L:36 N:4 C:8       ->  L:33 N:4 C:8  (pre-existing, improved)
+  messages.handle_messages             L:31 N:2 C:11      ->  L:30 N:2 C:11 (pre-existing, improved)
+  passthrough.handle_passthrough       L:29 N:1 C:2       ->  L:25 N:1 C:2  (one gray)
+  utils.forward_headers / response_headers: No refactoring issues found
+  buster_ripper/utils.py                 > Summary: 2 total issues found in 2 functions
+  buster_ripper/routes/chat.py           > Summary: 18 total issues found in 8 functions
+  buster_ripper/routes/messages.py       > Summary: 18 total issues found in 6 functions
+  buster_ripper/routes/passthrough.py    > Summary: 1 total issues found in 1 functions
+  tests/conftest.py                      Too Many Parameters reports: 0
+  tests/upstream_stub.py                 Too Many Parameters reports: 0
+  tests/test_header_parity.py            Too Many Parameters reports: 0
+  tests/test_stream_relay_commit.py      Too Many Parameters reports: 0
+  raw lines: utils.py      133 · chat.py      295 · messages.py      293 · passthrough.py       53
+  (every production file under the 300-line Green ceiling; no function's metrics worsened by this wave)
+zsh:114: command not found: HDR
+
+=== Yield 066-01 additions: two mutations the authoring pass did not run ===
+Wrong-reason audit of the checkpoint-137 consolidation - do the BOUNDARY witnesses gate the
+filter, or only aiohttp's own handling of those names? Both helpers were made the identity
+function in turn, the full suite of the module re-run, and each mutation reverted.
+
+  M9  utils.response_headers returns its input unfiltered (identity)
+      -> 13 / 57 failed: all 9 helper kept-set params, BOTH ingress framing cases, and
+         both TestIngressSites::test_hop_by_hop_names_never_reach_the_client sites
+  M10 utils.forward_headers returns its input unfiltered (identity)
+      -> 17 / 57 failed: all 9 egress helper params, all THREE TestEgressSites hop-by-hop
+         sites, all three direction-pairing sites (Host / Content-Length behaviour), and
+         both mis-cased-name cases
+  Neither witness family is carried by the library: the site-level witnesses fail with the
+  filter neutered. (Two of the eight per-name arms, Connection and Transfer-Encoding, are
+  names aiohttp's own server layer also controls; the other six are filter-only, and the
+  witness asserts all eight as one parametrized case.)
+
+  M4 was also replayed in its literal shape (failure path returns a fresh
+  web.json_response(502)) -> 8 / 12, reproducing the recorded count exactly; the re-raise
+  shape of the same defect gives 4 / 12, so the count depends on the mutation's shape and
+  both fire.
+
+=== Yield 066-01 re-derivation: M1-M8 all fire (final consolidated tree) ===
+  M1 3/57 · M2 2/57 · M3 9/57 · M4 8/12 · M5 5/12 · M6 8/12 · M7 4/12 · M8 10/12
+  (M8's two survivors: the success relay and the pre-commit 502 - the halves the split must
+  not change). Re-derived independently; tree verified clean after each revert.
+
+=== Yield 066-01 test-cost and isolation checks ===
+  uv run pytest tests/test_header_parity.py tests/test_stream_relay_commit.py --no-cov
+    -> 69 passed in 0.13s, ZERO warnings (so the suite's unawaited-coroutine warnings
+    belong to tests/test_server_hooks.py and are pre-existing, not fixture pollution)
+  uv run pytest tests/qa/test_qap_ms004.py -o addopts= -> 6 passed in 44.27s
+    (re-run at the FINAL bytes: 134/137 moved tests/conftest.py, which the QA modules
+    collect; the record above stops at "after G-1")
+  grep -rE "def (test_[a-z0-9_]+|pytest_[a-z_]+)\(([^)]*\b(proxy|raw_proxy)\b)" tests/
+    -> matches only inside the two new modules, so the new shared fixtures capture no
+    pre-existing test's parameters
+  name-status over 41d3fc6..HEAD: 9 files, all declared; no test deleted or weakened
+    (tests/conftest.py held no fixtures before this wave); no invariants/ or assumptions/
+    path written by the wave
+  LNCP re-measured both ways: chat._prepare_headers L:8 N:2 C:4 at base -> no scanner
+    issue now. NOTE: the quality-backlog annotation written at 137 cites L11/N3/C6 ->
+    L9/N2/C6 for that function and still calls _make_chat_request a hard N4 (it measures
+    L:18 N:2 C:4 at base and unchanged); QB:quality-backlog/066-01-stale-pointers.
+
+=== Yield 066-01 REJECTED: the one reject-tier finding, with the replay ===
+  _prepare_headers selection: token = next(v for v in values if not _is_empty_bearer(v))
+  and _is_empty_bearer("") is False (bool(value) short-circuits), so a VALUE-LESS line
+  counts as a token and wins the selection when it arrives first.
+  Egress values held for the name, CIMultiDict input, new vs base 41d3fc6:
+    ["", "Bearer sk-real"]        different spellings -> new ['']   | base ['', 'Bearer sk-real']
+    ["", "Bearer sk-real"]        same spelling       -> new ['']   | base ['Bearer sk-real']
+    ["Bearer sk-real", ""]        same spelling       -> new ['Bearer sk-real'] | base ['']
+    ["Bearer ", real] / [real, "Bearer "]             -> new ['Bearer sk-real'] (the fixed case)
+  So DC-S10-C2-r1's "when a credential is present the forwarded request carries that
+  credential" is unmet, and two of the four orderings are WORSE than the base the wave
+  restores. Reach: raw client socket, the same method the wave's own duplicate-spelling
+  witness uses; the aiohttp client collapses the two lines before the wire.
+  No witness covers a blank value beside a credential: _EMPTY_SPELLINGS is ("Bearer",
+  "Bearer ") and the collapsed-copy table pairs a real token with "Bearer " only. The lone
+  blank line (test_a_value_less_authorization_line_is_not_touched) is correct base parity
+  and must keep passing.
+  Closure: absorbed, no user question. Full packet: iterations/066-01-yield.md
+  §Deterministic closure packet.

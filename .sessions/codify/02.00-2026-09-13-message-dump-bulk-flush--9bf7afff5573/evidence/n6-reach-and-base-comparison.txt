@@ -1,0 +1,143 @@
+N6 reach determination + base comparison — assumption-decide 084 (run-45 rows 418/419/422/423)
+Date: 2026-10-07   Session: 02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573
+Repository state at determination (pre-write HEAD): 9c90675f69998e0ea7847c6b456c2e3f46f8a81c
+aiohttp 3.13.3 (.venv/lib/python3.13/site-packages/aiohttp)   web_response.py sha256:3ca73388d5382e67ed5ea295be844cac06ce7950a5a5237e8b39c7b2259ece65
+payload.py sha256:3ba9ec60d50b2fb01e33673227a4d85fbde77159cbe71270b7901e831c0c2aac
+
+================ 1. WHAT CONSTRUCTS THE OBJECT THE MATCHER READS ================
+producer  buster_ripper/routes/messages.py:149-155  (upstream >=400 arm of _stream_single_request)
+  :148              # Check for error response BEFORE preparing our response
+  :149              if resp.status >= 400:
+  :150                  error_content = await _error_body(resp)
+  :151                  return web.Response(
+  :152                      body=error_content,
+  :153                      status=resp.status,
+  :154                      content_type="application/json",
+  :155                  )
+  :156  
+consumer  buster_ripper/routes/messages.py:105-107  (handle_streaming's overflow probe)
+  :105          if isinstance(result, web.Response) and result.status >= 400:
+  :106              error_text = result.body.decode() if isinstance(result.body, bytes) else str(result.body)
+  :107              overflow_err = parse_context_overflow_error(error_text)
+matcher   buster_ripper/utils.py:123-140 (parse_context_overflow_error)  patterns buster_ripper/config.py:122-123
+  :122  CONTEXT_OVERFLOW_RE = re.compile(r"Context overflow.*?(\d+)\s*>\s*(\d+)")
+  :123  CTX_LIMIT_RE = re.compile(r"max_completion_tokens.*?(\d+)")
+
+Answer: body= , NOT text=.  error_content is the str returned by _error_body (messages.py:176-187).
+
+================ 2. PACKAGE-WIDE CENSUS OF THE SURFACE (bounded reach) ================
+$ grep -rn "\.body|body=" buster_ripper/
+  buster_ripper/routes/chat.py:172:    return web.Response(body=body, status=resp.status, headers=response_headers(resp.headers))
+  buster_ripper/routes/chat.py:188:        return web.Response(body=await resp.read(), status=resp.status,
+  buster_ripper/routes/messages.py:106:            error_text = result.body.decode() if isinstance(result.body, bytes) else str(result.body)
+  buster_ripper/routes/messages.py:152:                    body=error_content,
+  buster_ripper/routes/messages.py:317:                body=content,
+  buster_ripper/routes/passthrough.py:44:                body=content,
+  -> one str enters body= (:152); one site reads .body back (:106). chat.py:172/188,
+     messages.py:317, passthrough.py:44 all pass bytes from resp.read(); chat's overflow
+     probe (chat.py:178) feeds the matcher json.dumps(resp_data) — real text, never a repr.
+
+================ 3. IS THE GATE LIVE? (backend == sglang) ================
+  main.py:129  @click.option("--backend-type", type=click.Choice(["sglang", "vllm"]),
+  main.py:130                help="Override backend type (default: auto-detect)")
+  server.py: 70      # Detect backend type (SGLang vs vLLM)
+  server.py: 71      await backend.detect_backend(
+  server.py: 72          session=app["session"],
+  server.py: 73          backend_url=config.UPSTREAM,
+  server.py: 74          cli_override=config.BACKEND_TYPE_OVERRIDE,
+  -> sglang is a live value by CLI override and by /v1/models auto-detect (backend.py:81 owned_by contains 'sglang').
+
+================ 4. EXECUTION — what the matcher actually receives (production helper, installed lib) ================
+$ .venv/bin/python  (aiohttp 3.13.3 + buster_ripper.utils, no server started, nothing written)
+  type(result.body)            : StringPayload
+  isinstance(result.body,bytes): False
+  error_text                   : '<aiohttp.payload.StringPayload object at 0x10b4e5160>'
+  CONTEXT_OVERFLOW_RE.search   : False
+  parse_context_overflow_error : None
+
+  -- the two surfaces that DO carry the text (rows 421 / 422's falsifier) --
+  result.text                  : '{"error": "Context overflow: input 5000 > 4096 tokens, max_completion_tokens 4096"}'
+  parse(.text)                 : {"error": "Context overflow: input 5000 > 4096 tokens, max_completion_tokens 4096"}
+       ^ the repr() of the ContextOverflowError the matcher RETURNED (its message is the text it matched) —
+         i.e. a real match, where the same call on str(result.body) returned None. Printed by the interpreter.
+  calculate_new_max_tokens(4096, 5000): 256   <- the literal the retry witness must assert on request 2 and 3
+
+  -- what goes over the wire today (rows 420/421: unaffected) --
+  Content-Type                 : application/json
+  payload bytes written        : b'{"error": "Context overflow: input 5000 > 4096 t' ...
+
+  -- the sibling arm in the same function (the ClientError 502) --
+  json_response .body type     : bytes | isinstance bytes: True
+  parse(.text) on the 502      : None
+
+  -- rejected candidate: construct with text= instead of body= --
+  Response(text=) .body type   : bytes -> current consumer would work
+  Response(text=) Content-Type : application/json; charset=utf-8   <-- client-visible delta
+  Response(text=) .text round trip: True
+
+================ 5. BASE COMPARISON (base parity as the ranking authority) ================
+Base = buster_ripper_legacy.py (1013 lines, tracked pre-refactor FastAPI/httpx monolith; the same file
+this session cites for base parity elsewhere: :664 stream deadline, :630-637 headers, :674-676 message_start.
+plan-summary.md:196-197 marks it excluded from scope for EDITS, not from comparison.)
+
+$ grep -niE "overflow|sglang|retry|backend|max_completion" buster_ripper_legacy.py
+  (no output — zero matches over the whole 1013-line base file)
+  -> The base has NO context-overflow retry, NO backend detection, and NO status-checked streaming error
+     arm. Its streaming branch returns StreamingResponse(generate()) unconditionally, so an upstream 400
+     arrives inside a 200 SSE body; its non-stream branch relays resp.content with no probe.
+  legacy:657      stream = body.get("stream", False)
+  legacy:658  
+  legacy:659      if stream:
+  legacy:660          t_start = time.monotonic()
+  legacy:695              media_type="text/event-stream",
+  legacy:696              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+  legacy:697          )
+  legacy:698      else:
+  legacy:699          t_start = time.monotonic()
+
+  VERDICT ON BASE PARITY: silent, NOT protective. There is no base behavior at this site to be at parity
+  with, so base parity neither owes the repair nor excuses it. The status-checked error arm and the retry
+  loop are both post-base (they arrived with the httpx->aiohttp migration), and the inertness came with them.
+
+================ 6. INHERITED OR INTRODUCED? ================
+  (a) Inherited at this session's first pass: iterations/001-collect.md section B-005 (2026-09-13) records
+      messages.py:73-268 as pre-existing 'streaming and non-streaming proxying, context-overflow
+      retry, header filtering all behave as tested'. No task of this session names handle_streaming.
+  (b) Not introduced by the CR3 delta. Prior bytes per the S18-MC-1 routing record
+      (handoff-context.md:1278): error_content = await resp.text() at messages.py:143-144 — already a
+      str, so :106 already took the else branch already. The delta changed only HOW the str is made.
+  (c) What the delta DID change, which N6 did not state: pre-delta an undecodable error body raised
+      UnicodeDecodeError out of the arm (only enclosing arm = except aiohttp.ClientError at :171) and
+      never reached :106 at all; post-delta _error_body returns replacement-decoded text that does.
+      Widened population entering the dead branch; unchanged outcome inside it.
+  (d) Both arms of the loop are inert, so the whole retry loop can never continue:
+      arm :151-155 (upstream >=400) -> StringPayload -> repr -> cannot match (section 4);
+      arm :171-173 (ClientError -> static 502 json_response) -> bytes, decodes fine, but the body is
+      the static literal since T016's de-leak and cannot contain 'Context overflow' either (section 4).
+      This is the OPPOSITE direction from seam-S11's Invalidates On 5, which anticipated evidence that a
+      caught exception's text COULD match. It cannot. S1-S15 stay terminal: S11 is cited here, not reopened.
+
+================ 7. NO WITNESS PINS IT (so the gate's fix-or-pin resolves to fix) ================
+$ grep -rn "handle_streaming|_stream_single_request|max_completion_tokens" tests/ --include=*.py
+  tests/test_upstream_answer_relay.py:373:        — not a ``ClientError`` either, so ``_stream_single_request``'s single arm matched
+  tests/test_transport_parity.py:17:``_stream_single_request``'s arm does not match and ``_relay_after_commit``'s
+  tests/test_stream_relay_commit.py:3:``_stream_single_request`` prepares its SSE response inside the handler, so once
+  tests/test_context_overflow.py:43:    def test_parse_overflow_with_max_completion_tokens(self):
+  tests/test_context_overflow.py:45:        error_text = "Context overflow: 50000 > 4096 max_completion_tokens 8192"
+  tests/test_context_overflow.py:62:    """Test new max_completion_tokens calculation."""
+  tests/test_context_overflow.py:119:        """CTX_LIMIT_RE should match max_completion_tokens values."""
+  tests/test_context_overflow.py:122:        match = pattern.search("max_completion_tokens 4096")
+  tests/test_context_overflow.py:131:            "max_completion_tokens=8192",
+  tests/test_context_overflow.py:132:            "max_completion_tokens: 4096",
+  tests/test_context_overflow.py:133:            "set max_completion_tokens 16384",
+  -> tests/test_context_overflow.py's TestBackendAwareRetry asserts only backend.get_backend_state() values;
+     no test enters the loop. A test is not a caller, and here there is not even one.
+
+================ 8. REACH VERDICT ================
+  reached. The gate is a configuration value an operator sets, and the Reach Gate counts that as real use
+  ('exposed surfaces are reached by definition' — input from a configuration value; 'priority is not reach').
+  Cited path: POST /v1/messages {stream:true} -> messages.py:67-68 -> handle_streaming:101-102 ->
+  _stream_single_request:149-155 -> messages.py:105-107 -> utils.parse_context_overflow_error -> None -> :125.
+  Harm when it fires: the oversized streaming turn is NOT retried with a reduced max_completion_tokens;
+  the upstream 400 is relayed to the client and the turn fails. That is the feature's designed trigger, not
+  an unusual sequence — so NOT the 1% or 0.01% category, and not an accepted risk.
