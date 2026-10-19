@@ -1,0 +1,2 @@
+[32m✓[0m No git changes found in [1mtests/test_stream_relay_commit.py[0m - nothing to analyze
+[2mUse scan without --git flag to analyze all files[0m

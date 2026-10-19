@@ -1,0 +1,123 @@
+FFF............
+ERROR: Coverage failure: total of 44 is less than fail-under=80
+                                                                         [100%]
+=================================== FAILURES ===================================
+_ TestCountTokensToleratesMalformedMembers.test_a_malformed_member_still_answers_an_estimate[tools-null-element] _
+tests/test_count_tokens_parity.py:67: in test_a_malformed_member_still_answers_an_estimate
+    assert response.status == 200, "the route answered 5xx for a member base tolerates"
+E   AssertionError: the route answered 5xx for a member base tolerates
+E   assert 500 == 200
+E    +  where 500 = <ClientResponse(http://127.0.0.1:50134/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 04:20:19 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 87, in handle_count_tokens
+    body, _ = normalize(body, session_id="")
+              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 220, in normalize
+    changes.extend(_normalize_tools(body))
+                   ~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 75, in _normalize_tools
+    original_names = [t.get("name", "") for t in tools]
+                      ^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+_ TestCountTokensToleratesMalformedMembers.test_a_malformed_member_still_answers_an_estimate[messages-null-element] _
+tests/test_count_tokens_parity.py:67: in test_a_malformed_member_still_answers_an_estimate
+    assert response.status == 200, "the route answered 5xx for a member base tolerates"
+E   AssertionError: the route answered 5xx for a member base tolerates
+E   assert 500 == 200
+E    +  where 500 = <ClientResponse(http://127.0.0.1:50137/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 04:20:19 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 87, in handle_count_tokens
+    body, _ = normalize(body, session_id="")
+              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 223, in normalize
+    changes.extend(_normalize_cache_control(body))
+                   ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 134, in _normalize_cache_control
+    stripped = _strip_cache_control_from_messages(body["messages"])
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    stripped += _strip_cache_control_from_content(msg.get("content"))
+                                                  ^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+_ TestCountTokensToleratesMalformedMembers.test_a_malformed_member_still_answers_an_estimate[messages-string-element] _
+tests/test_count_tokens_parity.py:67: in test_a_malformed_member_still_answers_an_estimate
+    assert response.status == 200, "the route answered 5xx for a member base tolerates"
+E   AssertionError: the route answered 5xx for a member base tolerates
+E   assert 500 == 200
+E    +  where 500 = <ClientResponse(http://127.0.0.1:50141/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 04:20:19 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 87, in handle_count_tokens
+    body, _ = normalize(body, session_id="")
+              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 223, in normalize
+    changes.extend(_normalize_cache_control(body))
+                   ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 134, in _normalize_cache_control
+    stripped = _strip_cache_control_from_messages(body["messages"])
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    stripped += _strip_cache_control_from_content(msg.get("content"))
+                                                  ^^^^^^^
+AttributeError: 'str' object has no attribute 'get'
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+buster_ripper/__init__.py         0      0   100%
+buster_ripper/backend.py         39     30    23%   42-71, 76-86, 95
+buster_ripper/compaction.py      43     11    74%   40-53, 90
+buster_ripper/config.py          42      2    95%   102-103
+buster_ripper/dump.py           180    126    30%   51-53, 58-60, 65-71, 76-91, 96-109, 121-122, 134-135, 141-144, 149-158, 163-167, 172-177, 182-189, 194-197, 202-206, 211-216, 221-226, 231-233, 239-240, 246-248, 254, 259, 264-266, 275-277, 282, 287-292, 297-305, 310-311, 316
+buster_ripper/image.py           95     72    24%   33-36, 41-45, 56-58, 69, 78-88, 93-105, 119-121, 126-134, 139-148, 156-158, 163, 185-200, 213-223, 231-235, 246-249, 254-255
+buster_ripper/normalize.py      131     53    60%   22, 40-41, 72-73, 76-87, 108-109, 119-120, 136, 143-165, 181-199, 213-214
+buster_ripper/session.py         50     23    54%   27-32, 36-46, 50-53, 60-71, 76-85
+buster_ripper/utils.py           56     36    36%   63-64, 82-88, 98-111, 118-120, 128-140, 149
+-----------------------------------------------------------
+TOTAL                           636    353    44%
+FAIL Required test coverage of 80% not reached. Total coverage: 44.50%
+=========================== short test summary info ============================
+FAILED tests/test_count_tokens_parity.py::TestCountTokensToleratesMalformedMembers::test_a_malformed_member_still_answers_an_estimate[tools-null-element]
+FAILED tests/test_count_tokens_parity.py::TestCountTokensToleratesMalformedMembers::test_a_malformed_member_still_answers_an_estimate[messages-null-element]
+FAILED tests/test_count_tokens_parity.py::TestCountTokensToleratesMalformedMembers::test_a_malformed_member_still_answers_an_estimate[messages-string-element]
+3 failed, 12 passed in 0.11s

@@ -1,0 +1,10 @@
+Terminal capture — real aiohttp TestServer/TestClient route, 2026-09-27
+
+Before replacement, targeted 429 cases failed because actual response Content-Type was application/json, versus the upstream text/plain; charset=utf-8, application/problem+json, or absent declaration.
+
+After replacement:
+$ uv run pytest tests/test_routes_integration.py::TestChatRoute -q -o addopts=''
+..............                                                           [100%]
+14 passed in 0.06s
+
+The parameterized HTTP client assertions inspect status 429, exact raw bytes, Content-Type (text/plain; charset=utf-8; application/problem+json; or native application/octet-stream for absent upstream header), and no upstream JSON decode. Successful SSE byte relay and nonstream +json transform are in the same passing class. This is test-server terminal evidence, not the separate process-level MS-002 gate.

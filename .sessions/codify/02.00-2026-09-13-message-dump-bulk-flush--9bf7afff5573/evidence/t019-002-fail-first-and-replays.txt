@@ -1,0 +1,350 @@
+T019.002 — the fail-first state and the three mutation replays
+============================================================================
+Task: T019.002 (CR4-F-01 remediation, nested under T019) · Forward iteration 090-01
+Pre-fix bytes: HEAD c5e2be4 (Checkpoint 204) · final bytes: the 090-01 checkpoint
+
+§A  FAIL-FIRST at pre-fix bytes — the new route witnesses, the fail-first draft of
+    the test module (15 witnesses; the final module carries 35 and imports
+    `strip_billing_nonce`, which does not exist here), production unmodified.
+    3 failed / 12 passed; the three failures print the escaping AttributeError
+    frames (normalize._normalize_tools / ._strip_cache_control_from_messages).
+    Command: uv run pytest tests/test_count_tokens_parity.py -q --tb=short
+    [corrected 2026-10-17 (`094-assumption-decide`): this label read "final test
+    code". §A's run has 15 witnesses, the final module has 35, and the final module
+    cannot collect at `c5e2be4` (`ImportError: cannot import name
+    'strip_billing_nonce'`), so §A is the draft. Transcript body unchanged.]
+----------------------------------------------------------------------------
+FFF............
+ERROR: Coverage failure: total of 44 is less than fail-under=80
+                                                                         [100%]
+=================================== FAILURES ===================================
+_ TestCountTokensToleratesMalformedMembers.test_a_malformed_member_still_answers_an_estimate[tools-null-element] _
+tests/test_count_tokens_parity.py:67: in test_a_malformed_member_still_answers_an_estimate
+    assert response.status == 200, "the route answered 5xx for a member base tolerates"
+E   AssertionError: the route answered 5xx for a member base tolerates
+E   assert 500 == 200
+E    +  where 500 = <ClientResponse(http://127.0.0.1:50134/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 04:20:19 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 87, in handle_count_tokens
+    body, _ = normalize(body, session_id="")
+              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 220, in normalize
+    changes.extend(_normalize_tools(body))
+                   ~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 75, in _normalize_tools
+    original_names = [t.get("name", "") for t in tools]
+                      ^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+_ TestCountTokensToleratesMalformedMembers.test_a_malformed_member_still_answers_an_estimate[messages-null-element] _
+tests/test_count_tokens_parity.py:67: in test_a_malformed_member_still_answers_an_estimate
+    assert response.status == 200, "the route answered 5xx for a member base tolerates"
+E   AssertionError: the route answered 5xx for a member base tolerates
+E   assert 500 == 200
+E    +  where 500 = <ClientResponse(http://127.0.0.1:50137/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 04:20:19 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 87, in handle_count_tokens
+    body, _ = normalize(body, session_id="")
+              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 223, in normalize
+    changes.extend(_normalize_cache_control(body))
+                   ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 134, in _normalize_cache_control
+    stripped = _strip_cache_control_from_messages(body["messages"])
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    stripped += _strip_cache_control_from_content(msg.get("content"))
+                                                  ^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+_ TestCountTokensToleratesMalformedMembers.test_a_malformed_member_still_answers_an_estimate[messages-string-element] _
+tests/test_count_tokens_parity.py:67: in test_a_malformed_member_still_answers_an_estimate
+    assert response.status == 200, "the route answered 5xx for a member base tolerates"
+E   AssertionError: the route answered 5xx for a member base tolerates
+E   assert 500 == 200
+E    +  where 500 = <ClientResponse(http://127.0.0.1:50141/v1/messages/count_tokens) [500 Internal Server Error]>\n<CIMultiDictProxy('Conte...ength': '55', 'Date': 'Wed, 07 Oct 2026 04:20:19 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/count_tokens.py", line 87, in handle_count_tokens
+    body, _ = normalize(body, session_id="")
+              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 223, in normalize
+    changes.extend(_normalize_cache_control(body))
+                   ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 134, in _normalize_cache_control
+    stripped = _strip_cache_control_from_messages(body["messages"])
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    stripped += _strip_cache_control_from_content(msg.get("content"))
+                                                  ^^^^^^^
+AttributeError: 'str' object has no attribute 'get'
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+buster_ripper/__init__.py         0      0   100%
+buster_ripper/backend.py         39     30    23%   42-71, 76-86, 95
+buster_ripper/compaction.py      43     11    74%   40-53, 90
+buster_ripper/config.py          42      2    95%   102-103
+buster_ripper/dump.py           180    126    30%   51-53, 58-60, 65-71, 76-91, 96-109, 121-122, 134-135, 141-144, 149-158, 163-167, 172-177, 182-189, 194-197, 202-206, 211-216, 221-226, 231-233, 239-240, 246-248, 254, 259, 264-266, 275-277, 282, 287-292, 297-305, 310-311, 316
+buster_ripper/image.py           95     72    24%   33-36, 41-45, 56-58, 69, 78-88, 93-105, 119-121, 126-134, 139-148, 156-158, 163, 185-200, 213-223, 231-235, 246-249, 254-255
+buster_ripper/normalize.py      131     53    60%   22, 40-41, 72-73, 76-87, 108-109, 119-120, 136, 143-165, 181-199, 213-214
+buster_ripper/session.py         50     23    54%   27-32, 36-46, 50-53, 60-71, 76-85
+buster_ripper/utils.py           56     36    36%   63-64, 82-88, 98-111, 118-120, 128-140, 149
+-----------------------------------------------------------
+TOTAL                           636    353    44%
+FAIL Required test coverage of 80% not reached. Total coverage: 44.50%
+=========================== short test summary info ============================
+FAILED tests/test_count_tokens_parity.py::TestCountTokensToleratesMalformedMembers::test_a_malformed_member_still_answers_an_estimate[tools-null-element]
+FAILED tests/test_count_tokens_parity.py::TestCountTokensToleratesMalformedMembers::test_a_malformed_member_still_answers_an_estimate[messages-null-element]
+FAILED tests/test_count_tokens_parity.py::TestCountTokensToleratesMalformedMembers::test_a_malformed_member_still_answers_an_estimate[messages-string-element]
+3 failed, 12 passed in 0.11s
+
+§B  MUTATION (b) — blueprint §Yield replay (b): restore the pre-T019 spelling
+    (drop the strip call, so sid = session_id(body) on the un-normalized body).
+    Both clause-4 witnesses must redden: the route oracle here AND the pre-existing
+    nonce witness in tests/test_routes_integration.py (byte-unchanged in this task).
+    5 failed / 64 passed.
+----------------------------------------------------------------------------
+............FFF........................................F......F......    [100%]
+=================================== FAILURES ===================================
+E   AssertionError: count_tokens answered its own estimate: the narrowed key missed
+    assert {'input_tokens': 47} == {'input_tokens': 1234}
+      
+      Differing items:
+      {'input_tokens': 47} != {'input_tokens': 1234}
+      Use -v to get more diff
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:210: AssertionError: count_tokens answered its own estimate: the narrowed key missed
+E   AssertionError: count_tokens answered its own estimate: the narrowed key missed
+    assert {'input_tokens': 54} == {'input_tokens': 1234}
+      
+      Differing items:
+      {'input_tokens': 54} != {'input_tokens': 1234}
+      Use -v to get more diff
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:210: AssertionError: count_tokens answered its own estimate: the narrowed key missed
+E   AssertionError: count_tokens answered its own estimate: the narrowed key missed
+    assert {'input_tokens': 64} == {'input_tokens': 1234}
+      
+      Differing items:
+      {'input_tokens': 64} != {'input_tokens': 1234}
+      Use -v to get more diff
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:210: AssertionError: count_tokens answered its own estimate: the narrowed key missed
+E   AssertionError: count_tokens answered its own estimate: the stats lookup missed
+    assert {'input_tokens': 45} == {'input_tokens': 1234}
+      
+      Differing items:
+      {'input_tokens': 45} != {'input_tokens': 1234}
+      Use -v to get more diff
+/Users/alexhubitski/Projects/buster-ripper/tests/test_routes_integration.py:300: AssertionError: count_tokens answered its own estimate: the stats lookup missed
+E   AssertionError: assert {'input_tokens': 45} == {'input_tokens': 190000}
+      
+      Differing items:
+      {'input_tokens': 45} != {'input_tokens': 190000}
+      Use -v to get more diff
+/Users/alexhubitski/Projects/buster-ripper/tests/test_routes_integration.py:361: AssertionError: assert {'input_tokens': 45} == {'input_tokens': 190000}
+=========================== short test summary info ============================
+FAILED tests/test_count_tokens_parity.py::TestCountTokensKeysOnTheNormalizedDigest::test_a_nonce_body_finds_the_stats_under_the_full_normalize_digest[string-system]
+FAILED tests/test_count_tokens_parity.py::TestCountTokensKeysOnTheNormalizedDigest::test_a_nonce_body_finds_the_stats_under_the_full_normalize_digest[block-system]
+FAILED tests/test_count_tokens_parity.py::TestCountTokensKeysOnTheNormalizedDigest::test_a_nonce_body_finds_the_stats_under_the_full_normalize_digest[block-system-with-cache-control]
+FAILED tests/test_routes_integration.py::TestCountTokensRoute::test_a_billing_nonce_body_finds_the_stats_messages_recorded
+FAILED tests/test_routes_integration.py::TestCountTokensRoute::test_count_tokens_inflates_on_compaction_trigger[per-session]
+5 failed, 64 passed in 0.13s
+
+§C  MUTATION (d) — the clause-4 future direction: normalize() gains a step that
+    rewrites system's text. 7 failed / 62 passed: the pure digest-equality battery
+    reddens on every string-system case (the mutation is string-only, so the
+    block-system cases stay green — the guard fires per shape) and the route oracle
+    reddens on [string-system].
+----------------------------------------------------------------------------
+............F..FF............FF..FF..................................    [100%]
+=================================== FAILURES ===================================
+E   AssertionError: count_tokens answered its own estimate: the narrowed key missed
+    assert {'input_tokens': 31} == {'input_tokens': 1234}
+      
+      Differing items:
+      {'input_tokens': 31} != {'input_tokens': 1234}
+      Use -v to get more diff
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:210: AssertionError: count_tokens answered its own estimate: the narrowed key missed
+E   AssertionError: a normalize() step beyond the system strip changed the digest
+    assert '518b67e65253' == '40baa08d8377'
+      
+      - 40baa08d8377
+      + 518b67e65253
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:279: AssertionError: a normalize() step beyond the system strip changed the digest
+E   AssertionError: a normalize() step beyond the system strip changed the digest
+    assert '518b67e65253' == '40baa08d8377'
+      
+      - 40baa08d8377
+      + 518b67e65253
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:279: AssertionError: a normalize() step beyond the system strip changed the digest
+E   AssertionError: a normalize() step beyond the system strip changed the digest
+    assert '551f26980c93' == '8036435e1b63'
+      
+      - 8036435e1b63
+      + 551f26980c93
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:279: AssertionError: a normalize() step beyond the system strip changed the digest
+E   AssertionError: a normalize() step beyond the system strip changed the digest
+    assert '551f26980c93' == '8036435e1b63'
+      
+      - 8036435e1b63
+      + 551f26980c93
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:279: AssertionError: a normalize() step beyond the system strip changed the digest
+E   AssertionError: a normalize() step beyond the system strip changed the digest
+    assert '518b67e65253' == '40baa08d8377'
+      
+      - 40baa08d8377
+      + 518b67e65253
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:279: AssertionError: a normalize() step beyond the system strip changed the digest
+E   AssertionError: a normalize() step beyond the system strip changed the digest
+    assert '518b67e65253' == '40baa08d8377'
+      
+      - 40baa08d8377
+      + 518b67e65253
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:279: AssertionError: a normalize() step beyond the system strip changed the digest
+=========================== short test summary info ============================
+FAILED tests/test_count_tokens_parity.py::TestCountTokensKeysOnTheNormalizedDigest::test_a_nonce_body_finds_the_stats_under_the_full_normalize_digest[string-system]
+FAILED tests/test_count_tokens_parity.py::TestTheSystemStripIsTheWholeOfWhatTheDigestCanSee::test_the_narrowed_key_matches_the_full_normalize_one[string-system-nonce-default]
+FAILED tests/test_count_tokens_parity.py::TestTheSystemStripIsTheWholeOfWhatTheDigestCanSee::test_the_narrowed_key_matches_the_full_normalize_one[string-system-nonce-strip-date-sglang]
+FAILED tests/test_count_tokens_parity.py::TestTheSystemStripIsTheWholeOfWhatTheDigestCanSee::test_the_narrowed_key_matches_the_full_normalize_one[tools-reordered-default]
+FAILED tests/test_count_tokens_parity.py::TestTheSystemStripIsTheWholeOfWhatTheDigestCanSee::test_the_narrowed_key_matches_the_full_normalize_one[tools-reordered-strip-date-sglang]
+FAILED tests/test_count_tokens_parity.py::TestTheSystemStripIsTheWholeOfWhatTheDigestCanSee::test_the_narrowed_key_matches_the_full_normalize_one[image-body-default]
+FAILED tests/test_count_tokens_parity.py::TestTheSystemStripIsTheWholeOfWhatTheDigestCanSee::test_the_narrowed_key_matches_the_full_normalize_one[image-body-strip-date-sglang]
+7 failed, 62 passed in 0.13s
+
+§D  MUTATION (c) — blueprint §Yield replay (c): the REJECTED candidate, i.e. harden
+    normalize()'s element loops instead of narrowing the call. Clause 5's /v1/messages
+    guard must redden 500 → 502. 3 failed / 32 passed.
+
+    Note the completeness correction this replay produced: the loops are three but
+    the read sites are FOUR. The first pass hardened _normalize_tools' original_names
+    comprehension and the sorted() key plus the _strip_cache_control_from_messages
+    loop, and {"tools":[null]} STILL 500ed — _normalize_tools reads t.get('name','')
+    a second time in sorted_names. §6 of evidence/cr4-probe-matrix.txt counts three
+    loops; a two-loop (or even three-loop, one-per-function) repair is incomplete.
+----------------------------------------------------------------------------
+........FFF........................                                      [100%]
+=================================== FAILURES ===================================
+E   AssertionError: /v1/messages stopped answering base's 500 — see roadmap.md §RM-012
+    assert 502 == 500
+     +  where 502 = <ClientResponse(http://127.0.0.1:51514/v1/messages) [502 Bad Gateway]>\n<CIMultiDictProxy('Content-Type': 'application/...rset=utf-8', 'Content-Length': '36', 'Date': 'Wed, 07 Oct 2026 04:22:04 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:messages.py:333 Upstream error: stub refused
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:151: AssertionError: /v1/messages stopped answering base's 500 — see roadmap.md §RM-012
+E   AssertionError: /v1/messages stopped answering base's 500 — see roadmap.md §RM-012
+    assert 502 == 500
+     +  where 502 = <ClientResponse(http://127.0.0.1:51518/v1/messages) [502 Bad Gateway]>\n<CIMultiDictProxy('Content-Type': 'application/...rset=utf-8', 'Content-Length': '36', 'Date': 'Wed, 07 Oct 2026 04:22:04 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:messages.py:333 Upstream error: stub refused
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:151: AssertionError: /v1/messages stopped answering base's 500 — see roadmap.md §RM-012
+E   AssertionError: /v1/messages stopped answering base's 500 — see roadmap.md §RM-012
+    assert 502 == 500
+     +  where 502 = <ClientResponse(http://127.0.0.1:51522/v1/messages) [502 Bad Gateway]>\n<CIMultiDictProxy('Content-Type': 'application/...rset=utf-8', 'Content-Length': '36', 'Date': 'Wed, 07 Oct 2026 04:22:04 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3')>\n.status
+------------------------------ Captured log call -------------------------------
+ERROR    buster-ripper:messages.py:333 Upstream error: stub refused
+/Users/alexhubitski/Projects/buster-ripper/tests/test_count_tokens_parity.py:151: AssertionError: /v1/messages stopped answering base's 500 — see roadmap.md §RM-012
+=========================== short test summary info ============================
+FAILED tests/test_count_tokens_parity.py::TestMessagesMalformedMemberPosture::test_a_malformed_member_still_answers_bas_own_500[tools-null-element]
+FAILED tests/test_count_tokens_parity.py::TestMessagesMalformedMemberPosture::test_a_malformed_member_still_answers_bas_own_500[messages-null-element]
+FAILED tests/test_count_tokens_parity.py::TestMessagesMalformedMemberPosture::test_a_malformed_member_still_answers_bas_own_500[messages-string-element]
+3 failed, 32 passed in 0.06s
+
+§E  BYTE-EXACTNESS of the reverts (sha256 of the restored files, then git diff)
+    count_tokens.py restored to the pre-mutation state before the normalize mutation;
+    normalize.py restored to the state carrying only the delegating entry.
+----------------------------------------------------------------------------
+87ebcd05c013917e121f406de54bbc7de1e01bb8454674b723e97c84fc7d2150  buster_ripper/normalize.py
+c6d6f92404deb5c65b73a00de51d1d9dd1f02946696ec8a1628ca09d23898c1f  buster_ripper/routes/count_tokens.py
+67a66b8aa733b31e982be4922350a7996ebdddb0fe5d391a6129a1cf342a9dff  buster_ripper/session.py
+64be411b2c2172354528ff46f1b394a29d3dcef949dfa199bd06e3c4e08b6251  buster_ripper/routes/messages.py
+38e577e2ae7a6f9f547ba28a17ed91ec5d4867c62cc10ea340ba26058c31da7e  buster_ripper/routes/chat.py
+
+git diff --name-only over the increment (production + tests):
+buster_ripper/normalize.py
+buster_ripper/routes/count_tokens.py
+
+§F  AFFECTED SCOPE, once, at the checkpoint boundary
+    Command: uv run pytest -q   (tests/qa excluded by norecursedirs)
+    511 passed @ 96.71% — baseline 476 @ 95.91%: +35 tests, none removed, coverage up.
+----------------------------------------------------------------------------
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+buster_ripper/__init__.py         0      0   100%
+buster_ripper/backend.py         39      0   100%
+buster_ripper/compaction.py      43      0   100%
+buster_ripper/config.py          42      2    95%   102-103
+buster_ripper/dump.py           180      0   100%
+buster_ripper/image.py           95      2    98%   79, 94
+buster_ripper/normalize.py      133      4    97%   159, 162, 201, 206
+buster_ripper/session.py         50     12    76%   36-46, 50-53, 60-71, 82-85
+buster_ripper/utils.py           56      1    98%   85
+-----------------------------------------------------------
+TOTAL                           638     21    97%
+Required test coverage of 80% reached. Total coverage: 96.71%
+511 passed, 22 warnings in 11.03s
+
+§G  TOUCH-SET PROOF (git status --porcelain over the owned trees, after every revert)
+----------------------------------------------------------------------------
+ M buster_ripper/normalize.py
+ M buster_ripper/routes/count_tokens.py
+?? tests/test_count_tokens_parity.py
+(M buster_ripper/normalize.py  = the delegating entry only, 13 added lines, zero removed)
+(?? tests/test_count_tokens_parity.py = the new witness module, 281 lines, untracked at capture)
+
+must-not-move surfaces, by git diff --stat (empty output = byte-identical to HEAD):
+(nothing printed above)
+
+raw sizes before -> after: normalize.py 228 -> 241 (Green, <300) · count_tokens.py 106 -> 106
+
+§H  LNCP, same measurement basis on both sides (codify scan path ... --git --detailed)
+----------------------------------------------------------------------------
+handle_count_tokens: HEAD L:18 N:1 C:3  ->  final L:18 N:1 C:3   (metric-neutral)
+  measured from git show HEAD:buster_ripper/routes/count_tokens.py in a scratch copy,
+  because quality-backlog.md records L:17 — that figure predates T019 step 1, whose
+  normalize call added the statement; this increment replaces one statement with one.
+strip_billing_nonce: one parameter, one executable statement, no branch; the scan
+  reports no issue in it (`normalize.py --git --detailed` -> "No refactoring issues found").
+normalize(), _normalize_system, _normalize_tools, _normalize_cache_control,
+_normalize_date, session.py, routes/messages.py, routes/chat.py: no hunk at all.

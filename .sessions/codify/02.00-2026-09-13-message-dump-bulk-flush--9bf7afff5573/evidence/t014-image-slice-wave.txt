@@ -1,0 +1,1344 @@
+T014 image-slice wave — evidence record (generated, not typed)
+session 02.00-2026-09-13-message-dump-bulk-flush · generated 2026-10-05 23:50:35
+base HEAD a5ef525 · blueprint handoff-context.md §Planned Task Context → T014
+files: buster_ripper/image.py (rewritten) · tests/test_image.py · tests/test_image_stability.py (new) · tests/image_bodies.py (new, shared builders)
+
+==============================================================================
+1. LEDGER ROW 278 — verified at write time by reading, no blind checker spent
+==============================================================================
+Claim: `buster_ripper/image.py` imports no `buster_ripper` module other than `config`.
+Check column at extraction: `—` (state `unverified`); precedent rows 195/198 at run 24.
+
+--- import block AS WRITTEN (lines 1-11 of the new file) ---
+"""Image handling for API relay with Base64 passthrough and caching.
+
+Pure functions for image detection, caching, and retrieval.
+Module-level state for image cache (like session.py pattern).
+"""
+
+import hashlib
+import json
+import time
+from typing import Optional
+--- every import statement in the file ---
+7:import hashlib
+8:import json
+9:import time
+10:from typing import Optional
+12:from . import config
+
+Only relative in-package import: `from . import config`. `hashlib`, `json`, `time`,
+`typing.Optional` are stdlib. Row 278 HOLDS on the post-write bytes; the wave added
+hashlib + json (stdlib) and no new package dependency, so row 2 (aiohttp+click only)
+is untouched too.
+
+==============================================================================
+2. RED BEFORE GREEN — the wave's witnesses against the PRE-WAVE image.py
+==============================================================================
+image.py at a5ef525 restored; the new test files run against it:
+....F.F..FF.F.FFF.F....FFF.F.....FF...FF..FFFFFFFFF.                     [100%]
+=================================== FAILURES ===================================
+_ TestDetectorWriterScope.test_position_table[earliest-user-image-latest-text-only] _
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b4a2990>
+build = <function <lambda> at 0x10b5096c0>, expected = True
+
+    @pytest.mark.parametrize("build, expected", _POSITION_TABLE)
+    def test_position_table(self, build, expected):
+        """`has_images` answers for every user message without raising, and the writer agrees."""
+        request = build()
+    
+>       assert image.has_images(request) is expected
+E       AssertionError: assert False is True
+E        +  where False = <function has_images at 0x10b4bfba0>({'messages': [{'content': [{'source': {'id': 'earliest'}, 'type': 'image'}], 'role': 'user'}, {'content': 'ok', 'role': 'assistant'}, {'content': [{'text': 'text only', 'type': 'text'}], 'role': 'user'}]})
+E        +    where <function has_images at 0x10b4bfba0> = image.has_images
+
+tests/test_image.py:107: AssertionError
+_ TestDetectorWriterScope.test_position_table[image-only-in-a-middle-user-message] _
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b48da70>
+build = <function <lambda> at 0x10b50a160>, expected = True
+
+    @pytest.mark.parametrize("build, expected", _POSITION_TABLE)
+    def test_position_table(self, build, expected):
+        """`has_images` answers for every user message without raising, and the writer agrees."""
+        request = build()
+    
+>       assert image.has_images(request) is expected
+E       AssertionError: assert False is True
+E        +  where False = <function has_images at 0x10b4bfba0>({'messages': [{'content': [{'text': 'first', 'type': 'text'}], 'role': 'user'}, {'content': 'ok', 'role': 'assistant'}... {'content': 'ok', 'role': 'assistant'}, {'content': [{'text': 'latest, text only', 'type': 'text'}], 'role': 'user'}]})
+E        +    where <function has_images at 0x10b4bfba0> = image.has_images
+
+tests/test_image.py:107: AssertionError
+______ TestDetectorWriterScope.test_position_table[messages-is-a-mapping] ______
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b46e470>
+build = <function <lambda> at 0x10b50a340>, expected = False
+
+    @pytest.mark.parametrize("build, expected", _POSITION_TABLE)
+    def test_position_table(self, build, expected):
+        """`has_images` answers for every user message without raising, and the writer agrees."""
+        request = build()
+    
+>       assert image.has_images(request) is expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+body = {'messages': {'x': 1}, 'system': 's'}
+
+    def has_images(body: dict) -> bool:
+        """Detect images in the last user message content.
+    
+        Returns True if any content block is an image type.
+        """
+        messages = body.get("messages", [])
+        if not messages:
+            return False
+    
+        # Check last user message for images
+        for msg in reversed(messages):
+>           if msg.get("role") != "user":
+               ^^^^^^^
+E           AttributeError: 'str' object has no attribute 'get'
+
+buster_ripper/image.py:36: AttributeError
+______ TestDetectorWriterScope.test_position_table[messages-is-a-string] _______
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b46e7a0>
+build = <function <lambda> at 0x10b50a3e0>, expected = False
+
+    @pytest.mark.parametrize("build, expected", _POSITION_TABLE)
+    def test_position_table(self, build, expected):
+        """`has_images` answers for every user message without raising, and the writer agrees."""
+        request = build()
+    
+>       assert image.has_images(request) is expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+body = {'messages': 'hi', 'system': 's'}
+
+    def has_images(body: dict) -> bool:
+        """Detect images in the last user message content.
+    
+        Returns True if any content block is an image type.
+        """
+        messages = body.get("messages", [])
+        if not messages:
+            return False
+    
+        # Check last user message for images
+        for msg in reversed(messages):
+>           if msg.get("role") != "user":
+               ^^^^^^^
+E           AttributeError: 'str' object has no attribute 'get'
+
+buster_ripper/image.py:36: AttributeError
+___ TestDetectorWriterScope.test_a_message_that_is_not_a_mapping_is_skipped ____
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b3ff250>
+
+    def test_a_message_that_is_not_a_mapping_is_skipped(self):
+        """The rest of the shape class: entries of `messages` that are not mappings.
+    
+        A list holding a string and a number is a body upstream rejects. The flag neither
+        strips it nor raises at it, and a real user message sitting beside them is still
+        handled — the detector and the writer have to agree about that list too.
+        """
+        real = user([image_block({"id": "kept"})])
+    
+        assert image.has_images(body("hi", 7, real)) is True
+        assert image.has_images(body("hi", 7, user("text"))) is False
+    
+>       image.strip_and_cache_images(body("hi", 7, real), "session-1")
+
+tests/test_image.py:132: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+body = {'messages': ['hi', 7, {'content': [{'source': {'id': 'kept'}, 'type': 'image'}], 'role': 'user'}]}
+session_id = 'session-1'
+
+    def strip_and_cache_images(body: dict, session_id: str) -> dict:
+        """Strip images from user message content and cache them.
+    
+        Replaces image blocks with placeholder references that can be restored later.
+        Images are stored in module-level cache with TTL-based expiration and LRU eviction.
+    
+        Args:
+            body: Request body dict with messages
+            session_id: Session identifier for cache isolation
+    
+        Returns:
+            Modified body dict with images replaced by placeholders
+        """
+        if session_id not in _image_cache:
+            _image_cache[session_id] = {}
+    
+        messages = body.get("messages", [])
+        if not messages:
+            return body
+    
+        for msg in messages:
+>           if msg.get("role") != "user":
+               ^^^^^^^
+E           AttributeError: 'str' object has no attribute 'get'
+
+buster_ripper/image.py:129: AttributeError
+_ TestDetectorWriterScope.test_the_strip_string_appears_once_the_gate_opens_for_a_history _
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b4b57c0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b54d090>
+
+    def test_the_strip_string_appears_once_the_gate_opens_for_a_history(self, mocker):
+        """The same call site, the row-1 shape: the gate opens and the claim is true."""
+        mocker.patch.object(config, "STRIP_IMAGES", True)
+        request = body(user([image_block({"id": "historical"})]), assistant("ok"),
+                       user(say("text only")))
+    
+        _, changes = normalize(request, session_id="session-1")
+    
+>       assert "stripped and cached images" in changes
+E       AssertionError: assert 'stripped and cached images' in []
+
+tests/test_image.py:156: AssertionError
+_ TestDetectorWriterScope.test_a_historical_image_is_stripped_through_the_route _
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b4dc210>
+proxy = <aiohttp.test_utils.TestClient object at 0x10b4c7cb0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b54d590>
+
+    async def test_a_historical_image_is_stripped_through_the_route(self, proxy, mocker):
+        """The route-level witness: a text-only latest turn still strips an earlier image."""
+        mocker.patch.object(config, "STRIP_IMAGES", True)
+        sent = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+        base64 = "QUJD" * 40
+        request = {"system": "s", "max_tokens": 16, "messages": [
+            user([{"type": "text", "text": "here"},
+                  image_block({"type": "base64", "media_type": "image/png", "data": base64})]),
+            assistant("ok"),
+            user(say("and now?")),
+        ]}
+    
+        response = await proxy.request("POST", "/v1/messages", json=request)
+    
+        assert response.status == 200
+        forwarded = {"messages": sent.call_args.kwargs["json"]["messages"]}
+>       assert images_left(forwarded) == []
+E       AssertionError: assert [{'source': {...pe': 'image'}] == []
+E         
+E         Left contains one more item: {'source': {'data': 'QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQ...JDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD', 'media_type': 'image/png', 'type': 'base64'}, 'type': 'image'}
+E         Use -v to get more diff
+
+tests/test_image.py:176: AssertionError
+_ TestDetectorWriterScope.test_a_malformed_body_gets_the_same_answer_whatever_the_flag_says[flag-on] _
+
+self = <tests.test_image.TestDetectorWriterScope object at 0x10b44be70>
+proxy = <aiohttp.test_utils.TestClient object at 0x10b614910>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b5a8050>
+strip_images = True
+
+    @pytest.mark.parametrize("strip_images", [True, False], ids=["flag-on", "flag-off"])
+    async def test_a_malformed_body_gets_the_same_answer_whatever_the_flag_says(
+        self, proxy, mocker, strip_images
+    ):
+        """`DC-CE-1-r1`'s two-run comparison, in process: the flag does not change the status class.
+    
+        A `messages` that is not a list is not this flag's business to validate, and
+        nothing between the handler and aiohttp catches — so before the fix the flag-on
+        run raised inside `reversed(messages)` and aiohttp answered its own 500 with
+        `force_close()`, while the flag-off run proxied the body and let upstream reply to
+        it. Syntax is already answered at the parse boundary; shape is upstream's.
+        """
+        mocker.patch.object(config, "STRIP_IMAGES", strip_images)
+        sent = mocker.patch.object(proxy.server.app["session"], "post",
+                                   return_value=StubUpstream())
+    
+        response = await proxy.request("POST", "/v1/messages",
+                                       json={"system": "s", "messages": {"x": 1}})
+    
+>       assert response.status == 200, "the proxy answered for a body it should have forwarded"
+E       AssertionError: the proxy answered for a body it should have forwarded
+E       assert 500 == 200
+E        +  where 500 = <ClientResponse(http://127.0.0.1:53822/v1/messages) [500 Internal Server Error]>\n<CIMultiDictProxy('Content-Type': 'te...ength': '55', 'Date': 'Tue, 06 Oct 2026 03:50:35 GMT', 'Server': 'Python/3.13 aiohttp/3.13.3', 'Connection': 'close')>\n.status
+
+tests/test_image.py:199: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    aiohttp.server:web_protocol.py:481 Error handling request from 127.0.0.1
+Traceback (most recent call last):
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_protocol.py", line 510, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/.venv/lib/python3.13/site-packages/aiohttp/web_middlewares.py", line 117, in impl
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/server.py", line 52, in logging_middleware
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/routes/messages.py", line 40, in handle_messages
+    if config.STRIP_IMAGES and image_handler.has_images(body):
+                               ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py", line 36, in has_images
+    if msg.get("role") != "user":
+       ^^^^^^^
+AttributeError: 'str' object has no attribute 'get'
+_________ TestImageCaching.test_strip_images_replaces_with_placeholder _________
+
+self = <tests.test_image.TestImageCaching object at 0x10b4a2490>
+
+    def test_strip_images_replaces_with_placeholder(self):
+        """Should replace images with text placeholders, in place."""
+        request = one_image({"url": "data:image/png;base64,abc"})
+    
+        result = image.strip_and_cache_images(request, "session-1")
+    
+        assert result["messages"][0]["content"][0]["type"] == "text"
+        assert images_left(result) == []
+>       assert placeholders(result) == ["img_04b45e9ae5ea"]
+E       AssertionError: assert ['img_0'] == ['img_04b45e9ae5ea']
+E         
+E         At index 0 diff: 'img_0' != 'img_04b45e9ae5ea'
+E         Use -v to get more diff
+
+tests/test_image.py:214: AssertionError
+________________ TestImageCacheTTL.test_cleanup_removes_expired ________________
+
+self = <tests.test_image.TestImageCacheTTL object at 0x10b4a2d50>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b4e4dd0>
+
+    def test_cleanup_removes_expired(self, mocker):
+        """Should remove expired entries during cleanup."""
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image.py:255: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b594670>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+_______________ TestImageCacheTTL.test_non_expired_images_remain _______________
+
+self = <tests.test_image.TestImageCacheTTL object at 0x10b4a2e90>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b658380>
+
+    def test_non_expired_images_remain(self, mocker):
+        """Should keep non-expired entries during cleanup."""
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 10_000)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image.py:268: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b6519b0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+____________ TestImageCacheLRUEviction.test_evicts_when_over_limit _____________
+
+self = <tests.test_image.TestImageCacheLRUEviction object at 0x10b4a2fd0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b57f460>
+
+    def test_evicts_when_over_limit(self, mocker):
+        """Should evict the least recently touched entries when over max size. Pre-state: empty."""
+        mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image.py:284: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b5cc670>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+________ TestImageCacheLRUEviction.test_lru_eviction_respects_sessions _________
+
+self = <tests.test_image.TestImageCacheLRUEviction object at 0x10b48de00>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b51df50>
+
+    def test_lru_eviction_respects_sessions(self, mocker):
+        """Should evict per-session, not globally.
+    
+        Pre-state: session-1 accumulates across the loop — three distinct sources against
+        a bound of 2 — which is the point; session-2's single entry is untouched by it.
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image.py:320: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b594750>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+__ TestPlaceholderIdentity.test_the_key_is_the_digest_of_the_canonical_source __
+
+self = <tests.test_image_stability.TestPlaceholderIdentity object at 0x10b4a3750>
+
+    def test_the_key_is_the_digest_of_the_canonical_source(self):
+        """The formula, pinned on the bytes the flag puts in the forwarded body."""
+        request = one_image(_PIN_SOURCE)
+    
+        image.strip_and_cache_images(request, "session-1")
+    
+>       assert placeholders(request) == [_PIN_KEY]
+E       AssertionError: assert ['img_0'] == ['img_04b45e9ae5ea']
+E         
+E         At index 0 diff: 'img_0' != 'img_04b45e9ae5ea'
+E         Use -v to get more diff
+
+tests/test_image_stability.py:62: AssertionError
+________ TestPlaceholderIdentity.test_one_source_two_requests_one_text _________
+
+self = <tests.test_image_stability.TestPlaceholderIdentity object at 0x10b4a3d90>
+
+    def test_one_source_two_requests_one_text(self):
+        """A replayed history keeps its placeholder byte-identical."""
+        first, second = one_image({"url": "data:1"}), one_image({"url": "data:1"})
+    
+        image.strip_and_cache_images(first, "session-1")
+        image.strip_and_cache_images(second, "session-1")
+    
+>       assert placeholders(first) == placeholders(second)
+E       AssertionError: assert ['img_0'] == ['img_1']
+E         
+E         At index 0 diff: 'img_0' != 'img_1'
+E         Use -v to get more diff
+
+tests/test_image_stability.py:71: AssertionError
+_ TestPlaceholderIdentity.test_one_source_repeated_in_one_request_is_one_entry _
+
+self = <tests.test_image_stability.TestPlaceholderIdentity object at 0x10b46ef10>
+
+    def test_one_source_repeated_in_one_request_is_one_entry(self):
+        """Pre-state: an empty cache, then two blocks carrying one source in a single call."""
+        reset_cache()
+        request = body(user([image_block({"url": "same"}), image_block({"url": "same"})]))
+    
+        image.strip_and_cache_images(request, "session-1")
+    
+        assert len(placeholders(request)) == 2
+>       assert len(set(placeholders(request))) == 1
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len({'img_0', 'img_1'})
+E        +    where {'img_0', 'img_1'} = set(['img_0', 'img_1'])
+E        +      where ['img_0', 'img_1'] = placeholders({'messages': [{'content': [{'text': '[image:img_0]', 'type': 'text'}, {'text': '[image:img_1]', 'type': 'text'}], 'role': 'user'}]})
+
+tests/test_image_stability.py:120: AssertionError
+_ TestPlaceholderIdentity.test_two_sources_in_one_message_at_the_cap_do_not_overwrite _
+
+self = <tests.test_image_stability.TestPlaceholderIdentity object at 0x10b46f020>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b57ac60>
+
+    def test_two_sources_in_one_message_at_the_cap_do_not_overwrite(self, mocker):
+        """The converse of the row above: distinct sources at the cap get distinct keys and evict.
+    
+        Pre-state built here, not inherited: this session's map holds exactly
+        `IMAGE_CACHE_MAX_SIZE` entries from two earlier writes. Under the count-derived key
+        both blocks recomputed `img_2`, the second replaced the first, and both forwarded
+        one byte-identical token for two different client images while the first block's
+        source was referenced by nothing (`DC-S13-CE1-r1`).
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
+        reset_cache()
+        image.strip_and_cache_images(one_image({"id": "at-cap-1"}), "session-1")
+        image.strip_and_cache_images(one_image({"id": "at-cap-2"}), "session-1")
+        assert len(image._image_cache["session-1"]) == 2
+    
+        request = body(user([image_block({"id": "P"}), image_block({"id": "Q"})]))
+        image.strip_and_cache_images(request, "session-1")
+    
+>       assert len(set(placeholders(request))) == 2, "two sources forwarded one placeholder"
+E       AssertionError: two sources forwarded one placeholder
+E       assert 1 == 2
+E        +  where 1 = len({'img_2'})
+E        +    where {'img_2'} = set(['img_2', 'img_2'])
+E        +      where ['img_2', 'img_2'] = placeholders({'messages': [{'content': [{'text': '[image:img_2]', 'type': 'text'}, {'text': '[image:img_2]', 'type': 'text'}], 'role': 'user'}]})
+
+tests/test_image_stability.py:141: AssertionError
+_ TestPlaceholderIdentity.test_eviction_keeps_running_and_never_reuses_a_live_key _
+
+self = <tests.test_image_stability.TestPlaceholderIdentity object at 0x10b4b6300>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b510d70>
+
+    def test_eviction_keeps_running_and_never_reuses_a_live_key(self, mocker):
+        """Eviction liveness: the bound is enforced on every insert, and no key lands on a live entry.
+    
+        Pre-state: an empty cache, then eight distinct sources through one session — the
+        101st-image shape at the default bound, at 3 for the cost of the loop. Under the
+        count-derived key the fourth image hit the live `img_3`, the replace kept its
+        position, the size never exceeded the bound again, and nothing was ever evicted
+        again (`DC-CE-5-r1`).
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 3)
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 10_000)
+        reset_cache()
+    
+        for i in range(8):
+            before = set(image._image_cache.get("session-1", {}))
+            request = one_image({"id": i})
+            image.strip_and_cache_images(request, "session-1")
+            after = set(image._image_cache["session-1"])
+    
+>           assert placeholders(request)[0] not in before, "a placeholder named a live entry"
+E           AssertionError: a placeholder named a live entry
+E           assert 'img_3' not in {'img_1', 'img_2', 'img_3'}
+
+tests/test_image_stability.py:187: AssertionError
+_____________ TestWritePathReclamation.test_w1_same_session_expiry _____________
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b4a3ed0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b5325f0>
+
+    def test_w1_same_session_expiry(self, mocker):
+        """A write sweeps its own session's expired payload and keeps the new one."""
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image_stability.py:200: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b532890>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+________ TestWritePathReclamation.test_w2_abandoned_session_is_dropped _________
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b54c050>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10bb6cef0>
+
+    def test_w2_abandoned_session_is_dropped(self, mocker):
+        """Another session's write reclaims an abandoned session's dict entirely.
+    
+        The global axis, and the witness that the outer-key drop is new code inside the
+        janitor rather than a new call to it (`DC-CE-3-r1`).
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image_stability.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b597070>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+_ TestWritePathReclamation.test_w3_a_write_after_its_session_aged_out_does_not_raise _
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b48e3f0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b62e750>
+
+    def test_w3_a_write_after_its_session_aged_out_does_not_raise(self, mocker):
+        """What the positional prohibition prevents: no delete between the ensure and the write.
+    
+        A drop placed there would surface to the client as an HTTP 500, because neither
+        guarded call site has a `try` and the one middleware does not catch.
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image_stability.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b5959b0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+_ TestWritePathReclamation.test_w4_the_read_path_expires_but_keeps_the_session _
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b48e2c0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b62c600>
+
+    def test_w4_the_read_path_expires_but_keeps_the_session(self, mocker):
+        """`_cleanup_expired_images` stays expiry-only: the read path indexes right after it."""
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image_stability.py:246: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b4dd8d0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+_ TestWritePathReclamation.test_w5_a_write_onto_an_aged_entry_carries_its_age_forward _
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b5505f0>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b62fc70>
+
+    def test_w5_a_write_onto_an_aged_entry_carries_its_age_forward(self, mocker):
+        """A re-send past the TTL is not a fresh entry, and this call's own sweep drops it.
+    
+        Pre-state: one entry, aged out with no sweep in between. A build that re-created
+        the stamp on a same-key write passes W1-W4 and fails here, because that sweep would
+        find an age-zero entry (`DC-CE-5-r1`).
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image_stability.py:264: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b5ccd70>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+____ TestWritePathReclamation.test_w6_eviction_orders_on_recency_not_on_age ____
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b46f130>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b593520>
+
+    def test_w6_eviction_orders_on_recency_not_on_age(self, mocker):
+        """The sort key is the moved slot: leaving it on `first_seen` keeps every size green and is FIFO."""
+        mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 10_000)
+>       clock = stamp_source(mocker)
+                ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_image_stability.py:280: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/image_bodies.py:106: in stamp_source
+    mocker.patch.object(image, "_now", source)
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:297: in object
+    return self._start_patch(
+.venv/lib/python3.13/site-packages/pytest_mock/plugin.py:266: in _start_patch
+    mocked: MockType = p.start()
+                       ^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1654: in start
+    result = self.__enter__()
+             ^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1497: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x10b594750>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'buster_ripper.image' from '/Users/alexhubitski/Projects/buster-ripper/buster_ripper/image.py'> does not have the attribute '_now'
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:1467: AttributeError
+___ TestWritePathReclamation.test_the_stamp_source_is_a_non_decreasing_clock ___
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b46f240>
+
+    def test_the_stamp_source_is_a_non_decreasing_clock(self):
+        """`DC-CE-4-r1`: both stamps come from `time.monotonic`, which cannot step backwards.
+    
+        The pin the injection cannot supply on its own: a build that rebound `_now` to
+        `time.time()` keeps every injected witness green while re-opening the entry a clock
+        adjustment makes immune to both advertised bounds.
+        """
+>       assert image._now is time.monotonic
+               ^^^^^^^^^^
+E       AttributeError: module 'buster_ripper.image' has no attribute '_now'
+
+tests/test_image_stability.py:300: AttributeError
+_ TestWritePathReclamation.test_w7_a_wall_clock_adjustment_cannot_pin_an_entry _
+
+self = <tests.test_image_stability.TestWritePathReclamation object at 0x10b51c750>
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10b99a1a0>
+
+    def test_w7_a_wall_clock_adjustment_cannot_pin_an_entry(self, mocker):
+        """Stamps and every comparison come from one source, not from the wall clock.
+    
+        No stamp injection here, deliberately: this row's wrong build reads the wall clock,
+        so the adjustment has to land on a name that build actually resolves at call time.
+        The wall clock is pinned at 1000 s and then at 400 s — one step back of 600 s — and
+        three writes go in past the size bound. A wall-clock module leaves the first entry
+        holding the largest stamp: last in every later deletion slice, and negatively aged,
+        so neither advertised bound can ever remove it (`DC-CE-4-r1`).
+        """
+        mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
+        mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
+        wall = mocker.patch("time.time", side_effect=[1000.0, 400.0, 401.0])
+        reset_cache()
+    
+        image.strip_and_cache_images(one_image({"id": "X"}), "A")
+        image.strip_and_cache_images(one_image({"id": "Y"}), "A")
+        image.strip_and_cache_images(one_image({"id": "Z"}), "A")
+    
+        assert len(image._image_cache["A"]) == 2, "the bound was exceeded with nothing removed"
+>       assert ids("A") == {"Y", "Z"}, "the entry stamped before the adjustment pinned the slice"
+E       AssertionError: the entry stamped before the adjustment pinned the slice
+E       assert {'X', 'Z'} == {'Y', 'Z'}
+E         
+E         Extra items in the left set:
+E         'X'
+E         Extra items in the right set:
+E         'Y'
+E         Use -v to get more diff
+
+tests/test_image_stability.py:322: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_image.py::TestDetectorWriterScope::test_position_table[earliest-user-image-latest-text-only]
+FAILED tests/test_image.py::TestDetectorWriterScope::test_position_table[image-only-in-a-middle-user-message]
+FAILED tests/test_image.py::TestDetectorWriterScope::test_position_table[messages-is-a-mapping]
+FAILED tests/test_image.py::TestDetectorWriterScope::test_position_table[messages-is-a-string]
+FAILED tests/test_image.py::TestDetectorWriterScope::test_a_message_that_is_not_a_mapping_is_skipped
+FAILED tests/test_image.py::TestDetectorWriterScope::test_the_strip_string_appears_once_the_gate_opens_for_a_history
+FAILED tests/test_image.py::TestDetectorWriterScope::test_a_historical_image_is_stripped_through_the_route
+FAILED tests/test_image.py::TestDetectorWriterScope::test_a_malformed_body_gets_the_same_answer_whatever_the_flag_says[flag-on]
+FAILED tests/test_image.py::TestImageCaching::test_strip_images_replaces_with_placeholder
+FAILED tests/test_image.py::TestImageCacheTTL::test_cleanup_removes_expired
+FAILED tests/test_image.py::TestImageCacheTTL::test_non_expired_images_remain
+FAILED tests/test_image.py::TestImageCacheLRUEviction::test_evicts_when_over_limit
+FAILED tests/test_image.py::TestImageCacheLRUEviction::test_lru_eviction_respects_sessions
+FAILED tests/test_image_stability.py::TestPlaceholderIdentity::test_the_key_is_the_digest_of_the_canonical_source
+FAILED tests/test_image_stability.py::TestPlaceholderIdentity::test_one_source_two_requests_one_text
+FAILED tests/test_image_stability.py::TestPlaceholderIdentity::test_one_source_repeated_in_one_request_is_one_entry
+FAILED tests/test_image_stability.py::TestPlaceholderIdentity::test_two_sources_in_one_message_at_the_cap_do_not_overwrite
+FAILED tests/test_image_stability.py::TestPlaceholderIdentity::test_eviction_keeps_running_and_never_reuses_a_live_key
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w1_same_session_expiry
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w2_abandoned_session_is_dropped
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w3_a_write_after_its_session_aged_out_does_not_raise
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w4_the_read_path_expires_but_keeps_the_session
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w5_a_write_onto_an_aged_entry_carries_its_age_forward
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w6_eviction_orders_on_recency_not_on_age
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_the_stamp_source_is_a_non_decreasing_clock
+FAILED tests/test_image_stability.py::TestWritePathReclamation::test_w7_a_wall_clock_adjustment_cannot_pin_an_entry
+26 failed, 26 passed in 0.34s
+(the new witnesses cannot pass the pre-wave module: no `_now`, no `_image_key`,
+ the detector stops at one message, and nothing sweeps the write path)
+
+green after restore: ....................................................                     [100%]
+52 passed in 0.03s
+
+==============================================================================
+3. FAIL-FIRST MATRIX — one mutation per run, .pyc purged, two agreeing tallies each
+==============================================================================
+id    wrong build                                                   red  tallies agree
+M1    detector: earliest-user-only abbreviation                       2  True   (2 failed, 50 passed in 0.04s)
+M2    detector: latest-user-only (the shipped defect)                 4  True   (4 failed, 48 passed in 0.04s)
+M3    detector/writer: no shape guard on a non-list `messages`        2  True   (2 failed, 50 passed in 0.04s)
+M4    key: the count-derived form `img_<len>` (the shipped defect)    8  True   (8 failed, 44 passed in 0.05s)
+M5    key: over the whole block, not the source                       3  True   (3 failed, 49 passed in 0.04s)
+M6    key: `session_id` folded into the digest                        6  True   (6 failed, 46 passed in 0.05s)
+M7    key: 12 chars sliced off the serialization, not the digest      4  True   (4 failed, 48 passed in 0.04s)
+M8    retention: no tail sweep on the write path (F-3 as shipped)     4  True   (4 failed, 48 passed in 0.05s)
+M9    retention: a session-scoped prune instead of the global swee    1  True   (1 failed, 51 passed in 0.04s)
+M10   retention: janitor wired, outer-key drop never written (CE-3    1  True   (1 failed, 51 passed in 0.04s)
+M11   retention: delete moved into `_cleanup_expired_images` (proh    6  True   (6 failed, 46 passed in 0.06s)
+M12   eviction: sort left on the age slot after the tuple change (    1  True   (1 failed, 51 passed in 0.04s)
+M13   retention: a same-key write re-creates the age stamp (idle T    1  True   (1 failed, 51 passed in 0.04s)
+M14   clock: stamps taken from the wall clock (CE-4)                  1  True   (1 failed, 51 passed in 0.04s)
+M15   clock: one comparison reads the wall clock, stamps come from   18  True   (18 failed, 34 passed in 0.07s)
+
+which witnesses fired, per mutation:
+  M1: test_position_table[image-only-in-a-middle-user-message], test_position_table[text-only-first-image-on-a-later-turn]
+  M2: test_a_historical_image_is_stripped_through_the_route, test_position_table[earliest-user-image-latest-text-only], test_position_table[image-only-in-a-middle-user-message], test_the_strip_string_appears_once_the_gate_opens_for_a_history
+  M3: test_has_images_no_messages, test_position_table[messages-is-none]
+  M4: test_eviction_keeps_running_and_never_reuses_a_live_key, test_one_source_repeated_in_one_request_is_one_entry, test_one_source_two_requests_one_text, test_strip_images_replaces_with_placeholder, test_the_key_is_the_digest_of_the_canonical_source, test_two_sources_in_one_message_at_the_cap_do_not_overwrite, test_w5_a_write_onto_an_aged_entry_carries_its_age_forward, test_w6_eviction_orders_on_recency_not_on_age
+  M5: test_strip_images_replaces_with_placeholder, test_the_key_is_the_digest_of_the_canonical_source, test_the_other_call_site_sees_the_same_key_through_a_cache_control
+  M6: test_key_order_in_the_source_does_not_move_the_key, test_one_source_two_sessions_one_text, test_source_less_blocks_share_the_empty_source_key, test_strip_images_replaces_with_placeholder, test_the_key_is_the_digest_of_the_canonical_source, test_the_other_call_site_sees_the_same_key_through_a_cache_control
+  M7: test_strip_images_replaces_with_placeholder, test_the_key_is_the_digest_of_the_canonical_source, test_two_sources_in_one_message_at_the_cap_do_not_overwrite, test_two_sources_two_keys
+  M8: test_w1_same_session_expiry, test_w2_abandoned_session_is_dropped, test_w3_a_write_after_its_session_aged_out_does_not_raise, test_w5_a_write_onto_an_aged_entry_carries_its_age_forward
+  M9: test_w2_abandoned_session_is_dropped
+  M10: test_w2_abandoned_session_is_dropped
+  M11: test_cleanup_removes_expired, test_position_table[image-only-in-a-non-user-message], test_position_table[no-image-in-any-user-message], test_w2_abandoned_session_is_dropped, test_w4_the_read_path_expires_but_keeps_the_session, test_w5_a_write_onto_an_aged_entry_carries_its_age_forward
+  M12: test_w6_eviction_orders_on_recency_not_on_age
+  M13: test_w5_a_write_onto_an_aged_entry_carries_its_age_forward
+  M14: test_the_stamp_source_is_a_non_decreasing_clock
+  M15: test_a_message_that_is_not_a_mapping_is_skipped, test_cache_isolated_by_session, test_cleanup_removes_expired, test_clear_removes_session, test_eviction_keeps_running_and_never_reuses_a_live_key, test_evicts_when_over_limit, test_get_cached_image_retrieves_source, test_lru_eviction_respects_sessions, test_no_eviction_when_under_limit, test_non_expired_images_remain, test_one_source_repeated_in_one_request_is_one_entry, test_two_sources_in_one_message_at_the_cap_do_not_overwrite, test_w1_same_session_expiry, test_w2_abandoned_session_is_dropped, test_w3_a_write_after_its_session_aged_out_does_not_raise, test_w4_the_read_path_expires_but_keeps_the_session, test_w6_eviction_orders_on_recency_not_on_age, test_w7_a_wall_clock_adjustment_cannot_pin_an_entry
+
+Note on M14: `_now = time.time` alone is caught only by the source-identity pin
+(test_the_stamp_source_is_a_non_decreasing_clock), because the whole module moves to
+the wall clock together and stays self-consistent. M15 — one site reading the wall
+clock while another stamps from the seam — is the mixed-source shape, and it turns 18
+witnesses red including W7. Two witnesses, two distinct wrong builds.
+
+==============================================================================
+4. POSITION TABLE — the six rows `063 R-D` binds, plus the shape class
+==============================================================================
+============================= test session starts ==============================
+platform darwin -- Python 3.13.8, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/alexhubitski/Projects/buster-ripper
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.1.0, asyncio-1.3.0, aiohttp-1.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 14 items
+
+tests/test_image.py ..............                                       [100%]
+
+============================== 14 passed in 0.02s ==============================
+
+==============================================================================
+5. CASE-TABLE AND W-TABLE RUNS
+==============================================================================
+============================= test session starts ==============================
+platform darwin -- Python 3.13.8, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/alexhubitski/Projects/buster-ripper
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.1.0, asyncio-1.3.0, aiohttp-1.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 19 items
+
+tests/test_image_stability.py ...................                        [100%]
+
+============================== 19 passed in 0.01s ==============================
+
+==============================================================================
+6. FRESHNESS DISCIPLINE (`DC-claim-289-r1` Yield replay)
+==============================================================================
+The identity table run twice in one process, then with inherited accumulation
+removed, must give identical results:
+  (a) both image modules, one process:
+      ....................................................                     [100%]
+52 passed in 0.03s
+  (b) the identity class alone, twice in one process:
+      ..........                                                               [100%]
+10 passed in 0.01s
+  (c) the stability module with the cache cleared before every test by the autouse
+      fixture and by an explicit `reset_cache()` inside each case that builds a
+      pre-state — the cases that do: 
+        test_one_source_repeated_in_one_request_is_one_entry
+        test_two_sources_in_one_message_at_the_cap_do_not_overwrite
+        test_eviction_keeps_running_and_never_reuses_a_live_key
+        test_w6_eviction_orders_on_recency_not_on_age
+        test_w7_a_wall_clock_adjustment_cannot_pin_an_entry
+
+==============================================================================
+7. CENSUS CHECKS THE BLUEPRINT ASKED FOR
+==============================================================================
+7a. read path stays unwired — production callers of the three read/janitor names:
+  get_cached_image: 0 reference(s) outside its own definition
+  cleanup_expired_images: 2 reference(s) outside its own definition
+      Binary file buster_ripper/__pycache__/image.cpython-313.pyc matches
+      buster_ripper/image.py:198:    cleanup_expired_images()
+  clear_session_cache: 0 reference(s) outside its own definition
+
+7b. `cleanup_expired_images` now has exactly one caller, the writer's tail (063 R-B):
+    buster_ripper/image.py:198:    cleanup_expired_images()
+    buster_ripper/image.py:238:def cleanup_expired_images() -> None:
+
+7c. the wave's only new serializer is inside the placeholder key (`S13-CE-2` replay):
+buster_ripper/image.py:119:    canonical = json.dumps(source, sort_keys=True, separators=(",", ":"))
+    (before this wave `rg -u "sort_keys|separators" buster_ripper` was empty — rows
+    279-285 describe the call site this wave creates, which is why they are re-verified
+    at the accepted-local recheck and are not cited as current support)
+
+7d. no test, comment or message in this wave claims restorability (`S13-GAP`):
+buster_ripper/image.py:173:    request path, and the placeholder is not a reference that restores anything.
+tests/test_image_stability.py:9:  contract; the cached source has no production reader and nothing restores an image
+    The only mentions are the corrected docstring, which states the marker contract
+    in the negative, and this file's own citation of the finding that required it.
+    `get_cached_image`'s docstring is unchanged and promises nothing.
+
+7e. the two guarded call sites are NOT consolidated (DC-F-3-r2 honored):
+buster_ripper/normalize.py:212:    if config.STRIP_IMAGES and session_id and image_handler.has_images(body):
+buster_ripper/normalize.py:213:        image_handler.strip_and_cache_images(body, session_id)
+buster_ripper/image.py:61:def has_images(body: dict) -> bool:
+buster_ripper/image.py:64:    Scans every user message, because that is the scope `strip_and_cache_images`
+buster_ripper/image.py:166:def strip_and_cache_images(body: dict, session_id: str) -> dict:
+buster_ripper/routes/messages.py:40:    if config.STRIP_IMAGES and image_handler.has_images(body):
+buster_ripper/routes/messages.py:41:        image_handler.strip_and_cache_images(body, sid)
+
+7f. no new `try` around the guarded call, and no local 400 (`DC-CE-1-r1`):
+    routes/messages.py, changed by this wave?
+      committed: no diff
+      worktree:  clean
+    every `try:` still in that handler (unchanged from the base):
+28:    try:
+58:        try:
+129:    try:
+180:    try:
+230:        try:
+258:    try:
+
+==============================================================================
+8. COVERAGE AND THE AFFECTED SCOPE
+==============================================================================
+....................................................                     [100%]
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                     Stmts   Miss  Cover   Missing
+------------------------------------------------------
+buster_ripper/image.py      95      2    98%   79, 94
+------------------------------------------------------
+TOTAL                       95      2    98%
+52 passed in 0.06s
+missed lines 79/94 are the two pre-existing session-absent early returns in
+`_cleanup_expired_images` and `_evict_by_lru`, reachable only if a caller names a
+session that was never ensured; every entry point guards first. No production path
+produces that state, so no witness builds one (R10).
+
+affected scope (image.py, normalize.py, routes/messages.py and their consumers):
+........................................................................ [ 41%]
+........................................................................ [ 83%]
+.............................                                            [100%]
+173 passed in 0.19s
+
+==============================================================================
+9. LNCP — measured on this tree (one file per invocation)
+==============================================================================
+--- buster_ripper/image.py  (255 buster_ripper/image.py lines)
+📁 Analyzing git changes in: buster_ripper/image.py
+[2mFound [0m[1;2;36m1[0m[2m changed files to analyze[0m
+
+Summary: [1;36m1[0m total issues found in [1;36m1[0m functions
+  Medium Nesting: [1;36m1[0m
+
+Detailed Analysis [1m([0mshowing [1;36m1[0m of [1;36m1[0m functions with issues[1m)[0m:
+
+[1;36m1[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.buster_ripper.image.py::cleanup_expir
+ed_images[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m cleanup_expired_images (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:4 N:2 C:3[0m
+└── [38;5;226m●[0m[2m Issues: Medium Nesting[0m
+    └── [38;5;22m[+] fn: ● _cleanup_expired_images[0m
+
+
+[2mLegend: [0m[2;33mL[0m[2m=[0m[2;35mLength[0m[2m, [0m[2;33mN[0m[2m=[0m[2;35mNesting[0m[2m, [0m[2;33mC[0m[2m=[0m[2;35mComplexity[0m
+
+--- tests/test_image.py  (364 tests/test_image.py lines)
+📁 Analyzing git changes in: tests/test_image.py
+[2mFound [0m[1;2;36m1[0m[2m changed files to analyze[0m
+
+[32m● [0m[32m/Users/alexhubitski/Projects/buster-ripper/tests/[0m[32mtest_image.py[0m[32m - File is [0m[1;32m364[0m[32m [0m
+[32mlines [0m[1;32m([0m[32mreview: <=[0m[1;32m300[0m[1;32m)[0m[32m. Consider extracting types, constants, or pure functions.[0m
+
+Summary: [1;36m3[0m total issues found in [1;36m3[0m functions
+  Medium Length: [1;36m1[0m
+  Medium Nesting: [1;36m1[0m
+  Medium Parameters: [1;36m1[0m
+
+Detailed Analysis [1m([0mshowing [1;36m3[0m of [1;36m3[0m functions with issues[1m)[0m:
+
+[1;36m1[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.tests.test_image.py::test_a_historica
+l_image_is_stripped_through_the_route[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m test_a_historical_image_is_stripped_through_the_route (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:16 N:0 C:1[0m
+└── [38;5;226m●[0m[2m Issues: Medium Length[0m
+
+[1;36m2[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.tests.test_image.py::test_position_ta
+ble[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m test_position_table (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:11 N:2 C:3[0m
+└── [38;5;226m●[0m[2m Issues: Medium Nesting[0m
+
+[1;36m3[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.tests.test_image.py::test_a_malformed
+_body_gets_the_same_answer_whatever_the_flag_says[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m test_a_malformed_body_gets_the_same_answer_whatever_the_flag_says (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:7 N:0 C:1[0m
+└── [38;5;226m●[0m[2m Issues: Medium Parameters[0m
+
+
+[2mLegend: [0m[2;33mL[0m[2m=[0m[2;35mLength[0m[2m, [0m[2;33mN[0m[2m=[0m[2;35mNesting[0m[2m, [0m[2;33mC[0m[2m=[0m[2;35mComplexity[0m
+
+--- tests/test_image_stability.py  (337 tests/test_image_stability.py lines)
+📁 Analyzing git changes in: tests/test_image_stability.py
+[2mFound [0m[1;2;36m1[0m[2m changed files to analyze[0m
+
+[32m● [0m[32m/Users/alexhubitski/Projects/buster-ripper/tests/[0m[32mtest_image_stability.py[0m[32m - [0m
+[32mFile is [0m[1;32m337[0m[32m lines [0m[1;32m([0m[32mreview: <=[0m[1;32m300[0m[1;32m)[0m[32m. Consider extracting types, constants, or pure[0m
+[32mfunctions.[0m
+
+Summary: [1;36m1[0m total issues found in [1;36m1[0m functions
+  Medium Nesting: [1;36m1[0m
+
+Detailed Analysis [1m([0mshowing [1;36m1[0m of [1;36m1[0m functions with issues[1m)[0m:
+
+[1;36m1[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.tests.test_image_stability.py::test_e
+viction_keeps_running_and_never_reuses_a_live_key[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m test_eviction_keeps_running_and_never_reuses_a_live_key (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:13 N:2 C:3[0m
+└── [38;5;226m●[0m[2m Issues: Medium Nesting[0m
+
+
+[2mLegend: [0m[2;33mL[0m[2m=[0m[2;35mLength[0m[2m, [0m[2;33mN[0m[2m=[0m[2;35mNesting[0m[2m, [0m[2;33mC[0m[2m=[0m[2;35mComplexity[0m
+
+--- tests/image_bodies.py  (107 tests/image_bodies.py lines)
+📁 Analyzing git changes in: tests/image_bodies.py
+[2mFound [0m[1;2;36m1[0m[2m changed files to analyze[0m
+
+Summary: [1;36m2[0m total issues found in [1;36m2[0m functions
+  Medium Nesting: [1;36m2[0m
+
+Detailed Analysis [1m([0mshowing [1;36m2[0m of [1;36m2[0m functions with issues[1m)[0m:
+
+[1;36m1[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.tests.image_bodies.py::placeholders[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m placeholders (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:6 N:2 C:4[0m
+└── [38;5;226m●[0m[2m Issues: Medium Nesting[0m
+    └── [1mfn: [0m[38;5;226m●[0m[38;5;226m _blocks[0m
+        [39m│   [0m[38;5;226m●[0m[39m [0m[2mL:3 N:2 C:4[0m
+        └── [38;5;226m●[0m[2m Issues: Medium Nesting[0m
+
+[1;36m2[0m. Call Tree 
+[1m([0mUsers.alexhubitski.Projects.buster-ripper.tests.image_bodies.py::_blocks[1m)[0m:
+[1mfn: [0m[38;5;226m●[0m[38;5;226m _blocks (target)[0m
+[39m│   [0m[38;5;226m●[0m[39m [0m[2mL:3 N:2 C:4[0m
+└── [38;5;226m●[0m[2m Issues: Medium Nesting[0m
+
+
+[2mLegend: [0m[2;33mL[0m[2m=[0m[2;35mLength[0m[2m, [0m[2;33mN[0m[2m=[0m[2;35mNesting[0m[2m, [0m[2;33mC[0m[2m=[0m[2;35mComplexity[0m
+

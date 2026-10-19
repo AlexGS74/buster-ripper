@@ -1,0 +1,91 @@
+CODEx-REVIEW CLOSURE PACKET — post-071 pass (routed to assumption-decide, closure-packet mode, 2026-10-06)
+Provenance: persisted verbatim by the assumption-decide routing pass of 2026-10-06 so the CR2 ledger rows have a
+citable evidence path. Source: a fresh `codex-review` pass over the branch diff against `main` @
+72e3a1c6861bf0d8de6317adf52289e5f6cfa4e1, run after MS-001's Yield Phase returned SEMANTIC-APPROVE (071).
+Verdict: NOT clean — 3 x P1 + 1 x P2, all four classified real, zero false positives, each carrying a complete
+closure packet. The review's headline reports head 2be9783 (Checkpoint 141); the routing pass re-verified every
+finding against the current bytes at HEAD dbd3072403cc5014b19be229725dbc974337658a (Checkpoint 162) before
+dispositioning. All six items below held at HEAD; none was already-closed.
+Mode: closure-packet routing (MS-001 boundary, external review findings).
+Assumptions directory: .sessions/codify/02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/assumptions/
+Registry root: invariants/
+
+--- PACKET BODY (as supplied) ---
+
+The findings concern buster_ripper/routes/chat.py and buster_ripper/routes/messages.py; T013 edited only
+_prepare_headers in chat and the filter sites plus the prepare() split in messages, and the drain restructured
+count_tokens and _render_body, so these surfaces are mostly untouched — verify, don't assume.
+
+F-1 [P1] routes/chat.py non-streaming responses are rebuilt with only Content-Type, discarding every upstream
+end-to-end response header (request IDs, rate-limit, retry hints) on both return paths, including the fall-through
+that runs when no transform applies. Base relayed _response_headers(resp.headers).
+CLOSURE: absorbed, selected closure: build from utils.response_headers on both paths; deferred additive half:
+raw-bytes passthrough when unfixed.
+
+F-2 [P1] an unconditional await resp.json() converts any well-formed non-JSON upstream answer (gateway HTML 502,
+plaintext 429) into a synthetic 502, discarding upstream status, body and headers — base fell through to the raw
+relay on parse failure. The reviewer adds something Codex did not report: the {"error": str(e)} body leaks the
+internal upstream URL to the caller, and the same str(e) shape exists on messages.py's and passthrough.py's
+ClientError arms. No witness in the tree can produce a non-parseable upstream answer at all, because
+tests/upstream_stub.py's json() never raises.
+CLOSURE: absorbed, selected closure: read bytes once, parse only where a transform or overflow check needs it,
+relay raw content + status + response_headers otherwise, and stop embedding exception text in the client-facing
+body.
+
+F-3 [P1] with PRESERVED_THINKING on — which serve_buster_ripper.sh:30 sets by default, so the shipped launcher runs
+this arm live — a request carrying "chat_template_kwargs": null makes setdefault return None and the nested
+kwargs.setdefault(...) raise AttributeError -> HTTP 500 with no upstream call. dict.setdefault returns the existing
+value when the key is present, so the guard never fires for null or any non-mapping. chat.py's identical injection
+is inside try/except Exception: pass; normalize.py and image.py guard every non-dict input. Branch-added surface,
+not inherited.
+CLOSURE: absorbed, selected closure: isinstance check plus replacement with a fresh dict, keeping the flag's
+injection guarantee; the reviewer explicitly rejected the swallow-and-pass alternative because it forwards null and
+injects nothing, and rejected answering 400.
+
+F-4 [P2] chat SSE relay writes a second HTTP head onto the wire after a post-commit failure (byte-level repro: two
+HTTP/1.1 status lines in one response, the 502 inside the committed 200's body). This is already owned: 066-01-yield
+P2 -> roadmap.md SS-Chat route's post-commit second head, ruled out of this session's scope by codify-scope rules
+1-2, pointer kept at QB:routes-chat/post-commit-second-head. Its packet says CLOSURE: absorbed with no code change
+here and a record amendment: the roadmap entry's line pointers are stale (:170-184 -> :174-188, prepare() at :184)
+and its harm description ("partial body without a terminator") understates the observed shape (a second head on the
+wire) — the reviewer notes that stronger severity is the reason this slice should not sit indefinitely behind other
+roadmap rows. Route that record amendment to the roadmap/registry owner.
+
+Two further items from the reviewer's own pass:
+(a) the retry path setting max_completion_tokens while leaving the client's max_tokens untouched on a route whose
+upstream speaks the Anthropic schema, with no test anywhere asserting what body reaches the upstream on a retry —
+filed CLOSURE: malformed, needing a request-log probe rather than a user question;
+(b) README.md:240's architecture tree still listing "app.py  FastAPI app + lifespan" after the migration —
+CLOSURE: absorbed, documentation-only, already claimed by QB:cli-surface/undocumented-flags-and-stats-db.
+
+Context you must not reopen: the session's assumption gate is now third-party-subjects-only, so repo: rows and repo
+seams are history and are not to be recomposed — these are external-review findings routed as tasks, which is a
+different lane. FK-011 stays the only open question. Nothing in this batch reopens T013/T014's accepted scope, and
+F-4's codify-scope ruling stands unless you find the byte-level evidence genuinely changes the ownership decision —
+if it does, say so explicitly rather than quietly folding the fix in.
+
+--- ROUTING-PASS RECHECK NOTES (assumption-decide, 2026-10-06; not part of the producer packet) ---
+
+- All four findings + item (a) hold at HEAD dbd3072. Site map at HEAD: F-1 -> chat.py:207-211 and :215-220;
+  F-2 -> chat.py:152 (:155-157 ClientError arm, :158-159 parse arm) + messages.py:158-160, :291-293 +
+  passthrough.py:48-49; F-3 -> messages.py:45-52; F-4 -> chat.py:151 call site, :155-157 arm, :174-188 relay,
+  prepare() at :184; (a) -> chat.py:59-60, messages.py:101-102, :240-241.
+- Two packet details corrected on the way in (same handling the 2026-10-05 pass applied to its packet):
+  1. F-2's witness claim is understated. tests/upstream_stub.py's json() indeed never raises, but
+     tests/test_routes_integration.py:239-243 (mocker-built mock with side_effect=UnicodeDecodeError) DOES
+     produce an unparseable non-stream upstream answer — and pins the synthetic 502 body the closure discards;
+     :179-192 additionally pins `upstream.json.assert_awaited_once()`, which the read-once mechanism removes.
+     Both witnesses are replaced, not skipped, by T015's done-when.
+  2. F-4's "harm description understates" premise matches no record in this session: roadmap.md §Chat route
+     ("a second status line inside the first response's body, and no terminal the client can trust") and
+     quality-backlog.md:51 ("prepares a second head inside the committed 200 body") already state the observed
+     shape; the string "partial body without a terminator" appears nowhere in the session records (grepped).
+     What the packet adds is the byte-level repro (confirmatory) and a prioritization flag. The pointer-staleness
+     half of the amendment is true and lands.
+- Base contract confirmed from the tracked pre-refactor copy, not git objects: buster_ripper_legacy.py:882-892
+  (chat: fixed path relays _response_headers + recomputed content-length; parse failure -> `except Exception:
+  pass  # fall through to normal response on parse error` -> raw resp.content + upstream status +
+  _response_headers), :716-718 and :911-913 (messages/passthrough raw relay + _response_headers), and NO
+  ClientError/502 arm anywhere — the str(e)-bodies at all three current sites are branch-added.
+- FK-011 untouched: F-3's guard is posture-independent; FK-011's cited lines (messages.py:43-50) were already
+  stale at :45-52 before this batch.

@@ -1,0 +1,48 @@
+# 091-yield-phase — upstream connectivity census during the pass
+# target: 192.168.50.132:30001 (hyperipper.local), this host: 192.168.50.152 (so the endpoint is remote)
+# probe: nc -z -G 3 192.168.50.132 30001, every 20 s, 20:02:59 -> 20:17:08 (local time), 2026-10-08
+# result: 43/43 refused. Companion immediate probes and the control ports are in the report body.
+
+20:02:59 refused
+20:03:19 refused
+20:03:39 refused
+20:03:59 refused
+20:04:20 refused
+20:04:40 refused
+20:05:00 refused
+20:05:20 refused
+20:05:40 refused
+20:06:01 refused
+20:06:22 refused
+20:06:43 refused
+20:07:04 refused
+20:07:25 refused
+20:07:46 refused
+20:08:06 refused
+20:08:26 refused
+20:08:46 refused
+20:09:06 refused
+20:09:26 refused
+20:09:47 refused
+20:10:07 refused
+20:10:27 refused
+20:10:47 refused
+20:11:07 refused
+20:11:27 refused
+20:11:47 refused
+20:12:07 refused
+20:12:27 refused
+20:12:47 refused
+20:13:07 refused
+20:13:27 refused
+20:13:47 refused
+20:14:07 refused
+20:14:28 refused
+20:14:48 refused
+20:15:08 refused
+20:15:28 refused
+20:15:48 refused
+20:16:08 refused
+20:16:28 refused
+20:16:48 refused
+20:17:08 refused

@@ -1,0 +1,59 @@
+### YIELD-PHASE 078 independent execution — snapshot HEAD 650894111c11eb52c7597d335e7ce4eaa5609147
+### started 2026-10-06T21:06:57Z
+
+===[1/3] hermetic full suite: uv run pytest ===
+tests/test_server_hooks.py::TestOnCleanupDumpFlush::test_shutdown_flush_failure_never_raises
+  /Users/alexhubitski/.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/unittest/mock.py:73: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    return issubclass(type(obj), NonCallableMock)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.8-final-0 _______________
+
+Name                          Stmts   Miss  Cover   Missing
+-----------------------------------------------------------
+buster_ripper/__init__.py         0      0   100%
+buster_ripper/backend.py         39      0   100%
+buster_ripper/compaction.py      43      1    98%   49
+buster_ripper/config.py          42      2    95%   102-103
+buster_ripper/dump.py           180      0   100%
+buster_ripper/image.py           95      2    98%   79, 94
+buster_ripper/normalize.py      131      9    93%   33-34, 146, 149, 156-157, 163, 188, 193
+buster_ripper/session.py         50     12    76%   36-46, 50-53, 60-71, 82-85
+buster_ripper/utils.py           56      1    98%   85
+-----------------------------------------------------------
+TOTAL                           636     27    96%
+Required test coverage of 80% reached. Total coverage: 95.75%
+455 passed, 22 warnings in 9.17s
+
+===[2/3] QAP-MS001 gate: pytest tests/qa/test_qap_ms001.py -o addopts= -v ===
+============================= test session starts ==============================
+platform darwin -- Python 3.13.8, pytest-9.0.2, pluggy-1.6.0 -- /Users/alexhubitski/Projects/buster-ripper/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/alexhubitski/Projects/buster-ripper
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.1.0, asyncio-1.3.0, aiohttp-1.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/qa/test_qap_ms001.py::test_tc100_collapsed_format_defers_every_write_until_a_flush PASSED [  9%]
+tests/qa/test_qap_ms001.py::test_tc107_no_format_configured_produces_the_documented_layout PASSED [ 18%]
+tests/qa/test_qap_ms001.py::test_tc108_documented_format_preserves_contents_at_2n_writes PASSED [ 27%]
+tests/qa/test_qap_ms001.py::test_tc108_sensitivity_documented_line_pattern_distinguishes_drift PASSED [ 36%]
+tests/qa/test_qap_ms001.py::test_sensitivity_upstream_oracle_distinguishes_transport_failure_from_a_relayed_body PASSED [ 45%]
+tests/qa/test_qap_ms001.py::test_tc001_documented_write_failure_still_returns_the_upstream_response PASSED [ 54%]
+tests/qa/test_qap_ms001.py::test_tc001_collapsed_flush_failure_still_returns_the_upstream_response PASSED [ 63%]
+tests/qa/test_qap_ms001.py::test_hostile_r1_unknown_dump_format_is_refused_and_writes_nothing PASSED [ 72%]
+tests/qa/test_qap_ms001.py::test_hostile_r1_body_parse_boundaries_on_the_documented_writer PASSED [ 81%]
+tests/qa/test_qap_ms001.py::test_hostile_r2_documented_writer_does_not_escape_the_dump_root PASSED [ 90%]
+tests/qa/test_qap_ms001.py::test_r5_near_miss_session_ids_are_not_merged PASSED [100%]
+
+============================== 11 passed in 2.65s ==============================
+
+===[3/3] remaining tests/qa gates (MS-002, MS-004): pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts= -q ===
+.....................                                                    [100%]
+21 passed in 60.17s (0:01:00)
+
+### finished 2026-10-06T21:08:10Z  HEAD 650894111c11eb52c7597d335e7ce4eaa5609147

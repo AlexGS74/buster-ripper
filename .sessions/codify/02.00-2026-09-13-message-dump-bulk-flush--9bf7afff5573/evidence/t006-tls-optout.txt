@@ -1,0 +1,28 @@
+== T006 — upstream TLS verification opt-out: visible surfaces ==
+
+--- 1. --help (new flag; flush triggers gain the positivity range) ---
+  --upstream TEXT                 vLLM base URL.  [default:
+  --skip-tls-verify               Skip upstream TLS certificate verification
+  --dump-flush-interval INTEGER RANGE
+                                  [default: 10; x>=1]
+  --dump-flush-bytes INTEGER RANGE
+                                  (collapsed formats only).  [default: 4194304;
+                                  x>=1]
+                                  [default: 100]
+
+--- 2. serve script guard matrix (unset / 0 / 1 / x) ---
+  SKIP_TLS_VERIFY=0    -> (no flag — verification ON)
+  SKIP_TLS_VERIFY=0    -> (no flag — verification ON)
+  SKIP_TLS_VERIFY=1    ->  --skip-tls-verify
+  SKIP_TLS_VERIFY=x    -> (no flag — verification ON)
+
+--- 3. committed QA peer fixture (tests/qa/) ---
+  subject=CN=127.0.0.1
+  issuer=CN=127.0.0.1
+  X509v3 Subject Alternative Name: 
+      IP Address:127.0.0.1
+  notAfter=Sep  4 14:43:57 2126 GMT
+
+--- 4. unit postures (tests/test_tls_posture.py) ---
+  ......                                                                   [100%]
+  6 passed in 0.02s

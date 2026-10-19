@@ -1,0 +1,35 @@
+T024 session-end Refactoring wave — unscoped suite on the resulting head
+HEAD: 793a5f0
+base: 72e3a1c
+
+=== tracked production/test diff since 191e676 (pre-wave head) ===
+ buster_ripper/utils.py              |  5 +++--
+ buster_ripper_legacy.py             |  4 ++++
+ pyproject.toml                      |  5 +++++
+ tests/qa/test_qap_ms001.py          | 14 +++++++-------
+ tests/qa/tls_probe_entry.py         |  1 -
+ tests/test_count_tokens_parity.py   | 12 +++++++++---
+ tests/test_dump.py                  |  1 -
+ tests/test_normalize.py             |  2 --
+ tests/test_serve_script_argv.py     |  2 +-
+ tests/test_server_hooks.py          |  2 +-
+ tests/test_session_stats.py         |  1 -
+ tests/test_tls_posture.py           |  1 -
+ tests/test_transport_parity.py      | 13 +++++++++----
+ tests/test_upstream_answer_relay.py |  1 -
+ 14 files changed, 39 insertions(+), 25 deletions(-)
+
+=== hermetic suite (uv run pytest -q) ===
+buster_ripper/session.py         50     12    76%   36-46, 50-53, 60-71, 82-85
+buster_ripper/utils.py           57      1    98%   86
+-----------------------------------------------------------
+TOTAL                           639     21    97%
+Required test coverage of 80% reached. Total coverage: 96.71%
+513 passed, 22 warnings in 12.68s
+
+=== QA gates (uv run pytest tests/qa -q --no-cov) ===
+......................................                                   [100%]
+38 passed in 87.97s (0:01:27)
+
+=== ruff F gate (uvx ruff@0.16.10 check) ===
+All checks passed!

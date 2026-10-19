@@ -1,0 +1,386 @@
+CR4-F-01 / CR4-F-02 — findings re-established on current bytes, by execution
+================================================================================
+Pass:   iterations/089-assumption-decide.md (closure-packet routing, CR4 batch)
+Basis:  git-commit:c5e2be44ba1a7ab984f02104472f06f849e4f773 — HEAD at routing time.
+        `git status --porcelain` is empty apart from the untracked
+        .sessions/.../iterations/088-codex-review.md, so the bytes measured here ARE the bytes 088 reviewed
+        (`git diff --name-only 6508941..HEAD` outside .sessions/ and invariants/ = 4 production + 5 test files).
+Range:  pre-range 650894111c11eb52c7597d335e7ce4eaa5609147 (Checkpoint 183 — 088's named Review object)
+        HEAD      c5e2be44ba1a7ab984f02104472f06f849e4f773 (Checkpoint 204)
+Base:   72e3a1c6861bf0d8de6317adf52289e5f6cfa4e1 (main; the monolith buster_ripper.py)
+
+Method (each end measured, not reasoned about)
+--------------------------------------------------------------------------------
+Snapshots of the three trees were taken with `git archive <rev> | tar -x` into a scratch directory; nothing under
+`.git/` was read as data and no repo byte was written by this pass. The package app is driven the way
+`tests/conftest.py` drives it — the real `buster_ripper.server.create_app()` on a real `aiohttp.test_utils.TestServer`
+— with `backend.detect_backend` neutralised, `backend.get_backend_state()` pinned per axis, `STRIP_IMAGES` off and
+`UPSTREAM` pointed at a port nothing listens on, so a relay that is reached answers 502 while a crash inside the
+handler answers 500. Status codes and the innermost in-project frame of any escaping exception are read from
+`aiohttp.server`'s ERROR record. Base's monolith is driven through Starlette's `TestClient` wrapped in a pure-ASGI
+exception recorder, and — because a base `/v1/messages` with a dead upstream 500s for the wrong reason — against a
+live stdlib upstream stub on a loopback port, so base's 500s are attributable to `normalize()` and the 200s prove the
+harness can succeed. `normalize()` is additionally called directly on base's bytes as a pure function.
+
+Axes:  `default` = STRIP_DATE off, backend vllm (the shipped default posture).
+       `stripdate-sglang` = STRIP_DATE on, backend sglang (the configuration the third raise site needs).
+
+Probe bodies (all valid JSON unless stated): the reviewer's three, plus the two shapes it recorded as unchanged, plus
+a well-formed control, a date+cache_control body, a non-dict body and an unparseable body.
+
+================================================================================
+§1  /v1/messages/count_tokens — HEAD (both axes), then pre-range (both axes)
+================================================================================
+=== head  axis=default  STRIP_DATE=False backend=vllm
+    package under test: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/__init__.py
+  --- /v1/messages/count_tokens
+    500  {"tools":[null]}                                           tools non-mapping element     AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 75, in _normalize_tools
+    500  {"messages":[null]}                                        messages non-mapping element  AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    500  {"messages":["x"]}                                         messages str element          AttributeError: 'str' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    200  {"system":[null]}                                          system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                          content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+    200  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 52, in _normalize_system
+    200  not json                                                   unparseable body            
+  --- /v1/messages
+    500  {"tools":[null]}                                           tools non-mapping element     AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 75, in _normalize_tools
+    500  {"messages":[null]}                                        messages non-mapping element  AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    500  {"messages":["x"]}                                         messages str element          AttributeError: 'str' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    502  {"system":[null]}                                          system non-mapping block    
+         5xx without captured traceback: []
+    502  {"messages":[{"content":[null]}]}                          content non-mapping block   
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+         5xx without captured traceback: []
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 52, in _normalize_system
+    400  not json                                                   unparseable body            
+
+=== head  axis=stripdate-sglang  STRIP_DATE=True backend=sglang
+    package under test: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/__init__.py
+  --- /v1/messages/count_tokens
+    500  {"tools":[null]}                                           tools non-mapping element     AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 75, in _normalize_tools
+    500  {"messages":[null]}                                        messages non-mapping element  AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    500  {"messages":["x"]}                                         messages str element          AttributeError: 'str' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    200  {"system":[null]}                                          system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                          content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+    200  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 52, in _normalize_system
+    200  not json                                                   unparseable body            
+  --- /v1/messages
+    500  {"tools":[null]}                                           tools non-mapping element     AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 75, in _normalize_tools
+    500  {"messages":[null]}                                        messages non-mapping element  AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    500  {"messages":["x"]}                                         messages str element          AttributeError: 'str' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    502  {"system":[null]}                                          system non-mapping block    
+         5xx without captured traceback: []
+    502  {"messages":[{"content":[null]}]}                          content non-mapping block   
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+         5xx without captured traceback: []
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/head/buster_ripper/normalize.py", line 52, in _normalize_system
+    400  not json                                                   unparseable body            
+
+=== pre  axis=default  STRIP_DATE=False backend=vllm
+    package under test: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/__init__.py
+  --- /v1/messages/count_tokens
+    200  {"tools":[null]}                                           tools non-mapping element   
+    200  {"messages":[null]}                                        messages non-mapping element
+    200  {"messages":["x"]}                                         messages str element        
+    200  {"system":[null]}                                          system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                          content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+    200  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/session.py", line 95, in session_id
+    200  not json                                                   unparseable body            
+  --- /v1/messages
+    500  {"tools":[null]}                                           tools non-mapping element     AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 75, in _normalize_tools
+    500  {"messages":[null]}                                        messages non-mapping element  AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    500  {"messages":["x"]}                                         messages str element          AttributeError: 'str' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    502  {"system":[null]}                                          system non-mapping block    
+         5xx without captured traceback: []
+    502  {"messages":[{"content":[null]}]}                          content non-mapping block   
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+         5xx without captured traceback: []
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 52, in _normalize_system
+    400  not json                                                   unparseable body            
+
+=== pre  axis=stripdate-sglang  STRIP_DATE=True backend=sglang
+    package under test: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/__init__.py
+  --- /v1/messages/count_tokens
+    200  {"tools":[null]}                                           tools non-mapping element   
+    200  {"messages":[null]}                                        messages non-mapping element
+    200  {"messages":["x"]}                                         messages str element        
+    200  {"system":[null]}                                          system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                          content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+    200  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/session.py", line 95, in session_id
+    200  not json                                                   unparseable body            
+  --- /v1/messages
+    500  {"tools":[null]}                                           tools non-mapping element     AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 75, in _normalize_tools
+    500  {"messages":[null]}                                        messages non-mapping element  AttributeError: 'NoneType' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    500  {"messages":["x"]}                                         messages str element          AttributeError: 'str' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 117, in _strip_cache_control_from_messages
+    502  {"system":[null]}                                          system non-mapping block    
+         5xx without captured traceback: []
+    502  {"messages":[{"content":[null]}]}                          content non-mapping block   
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":"x"}]}               well-formed control         
+         5xx without captured traceback: []
+    502  {"messages":[{"role":"user","content":[{"cache_control":{" date+cache_control well-formed
+         5xx without captured traceback: []
+    500  [1,2]                                                      non-dict body                 AttributeError: 'list' object has no attribute 'get'
+         escape site: /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/pre/buster_ripper/normalize.py", line 52, in _normalize_system
+    400  not json                                                   unparseable body            
+
+Reads:  `{"tools":[null]}`, `{"messages":[null]}`, `{"messages":["x"]}`  →  200 at 6508941, 500 at HEAD, on BOTH
+        axes. The raise is `AttributeError`, escaping `handle_count_tokens` from `normalize.py:75`
+        (`_normalize_tools`) for the tools element and `normalize.py:117` (`_strip_cache_control_from_messages`) for
+        the two messages elements. `{"system":[null]}` and `{"messages":[{"content":[null]}]}` answer 200 at both
+        ends. The non-dict body `[1,2]` answers 500 at BOTH ends — pre-range out of `session.py:95` (`session_id`),
+        HEAD out of `normalize.py:52` (`_normalize_system`) — same status, same request, so that row is unchanged by
+        the range rather than moved by it, exactly as 088 §Checked-and-cleared recorded.
+
+================================================================================
+§2  Base (main 72e3a1c6, the monolith) — count_tokens, with a live upstream stub
+================================================================================
+=== base main /private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/opencode/cr4-probe/base/buster_ripper.py axis=default STRIP_DATE=False upstream=stub:64532
+  --- normalize() called directly on base bytes (pure function, no transport)
+    RAISES   {"tools":[null]}                                         tools non-mapping element -> AttributeError at buster_ripper.py:374 in normalize
+    RAISES   {"messages":[null]}                                      messages non-mapping element -> AttributeError at buster_ripper.py:402 in normalize
+    RAISES   {"messages":["x"]}                                       messages str element -> AttributeError at buster_ripper.py:402 in normalize
+    ok       {"system":[null]}                                        system non-mapping block
+    ok       {"messages":[{"content":[null]}]}                        content non-mapping block
+    ok       {"messages":[{"role":"user","content":"x"}]}             well-formed control
+    RAISES   [1,2]                                                    non-dict body -> AttributeError at buster_ripper.py:345 in normalize
+    ok       not json                                                 unparseable body
+  --- HTTP status with a live upstream stub
+  --- /v1/messages/count_tokens
+    200  {"tools":[null]}                                         tools non-mapping element   
+    200  {"messages":[null]}                                      messages non-mapping element
+    200  {"messages":["x"]}                                       messages str element        
+    200  {"system":[null]}                                        system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                        content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}             well-formed control         
+    500  [1,2]                                                    non-dict body                  escaped AttributeError: 'list' object has no attribute 'get' @ 449, in _session_id
+    200  not json                                                 unparseable body            
+  --- /v1/messages
+    500  {"tools":[null]}                                         tools non-mapping element      escaped AttributeError: 'NoneType' object has no attribute 'get' @ 374, in normalize
+    500  {"messages":[null]}                                      messages non-mapping element   escaped AttributeError: 'NoneType' object has no attribute 'get' @ 402, in normalize
+    500  {"messages":["x"]}                                       messages str element           escaped AttributeError: 'str' object has no attribute 'get' @ 402, in normalize
+    200  {"system":[null]}                                        system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                        content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}             well-formed control         
+    500  [1,2]                                                    non-dict body                  escaped AttributeError: 'list' object has no attribute 'get' @ 345, in normalize
+    500  not json                                                 unparseable body               escaped json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) @ 587, in proxy_messages
+
+Reads:  base answers **200** to all three bodies that 500 at HEAD, on both routes and both axes. Its
+        `count_tokens` (main's `buster_ripper.py:672`, reading the body at `:690` and keying at `:696`; the same
+        handler in this tree is `buster_ripper_legacy.py:726`, `:744`/`:750`, byte-unchanged across the range —
+        `git diff --stat 6508941..HEAD -- buster_ripper_legacy.py` is empty) parses with
+        `except Exception: body = {}` and keys off `_session_id(body)` with **no** `normalize` call. The only base 500
+        on that route is the non-dict body, out of `_session_id` (`:449`), which pre-range and HEAD also 500.
+        So: base tolerated, pre-range tolerated, HEAD does not. The regression claim is measured at all three
+        points, not inherited from 088's table.
+
+================================================================================
+§3  Base `/v1/messages` — the same bodies, live upstream, attributable
+================================================================================
+  --- normalize() called directly on base bytes (pure function, no transport)
+    RAISES   {"tools":[null]}                                         tools non-mapping element -> AttributeError at buster_ripper.py:374 in normalize
+    RAISES   {"messages":[null]}                                      messages non-mapping element -> AttributeError at buster_ripper.py:402 in normalize
+    RAISES   {"messages":["x"]}                                       messages str element -> AttributeError at buster_ripper.py:402 in normalize
+    ok       {"system":[null]}                                        system non-mapping block
+    ok       {"messages":[{"content":[null]}]}                        content non-mapping block
+    ok       {"messages":[{"role":"user","content":"x"}]}             well-formed control
+    RAISES   [1,2]                                                    non-dict body -> AttributeError at buster_ripper.py:345 in normalize
+    ok       not json                                                 unparseable body
+  --- HTTP status with a live upstream stub
+  --- /v1/messages/count_tokens
+    200  {"tools":[null]}                                         tools non-mapping element   
+    200  {"messages":[null]}                                      messages non-mapping element
+    200  {"messages":["x"]}                                       messages str element        
+    200  {"system":[null]}                                        system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                        content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}             well-formed control         
+    500  [1,2]                                                    non-dict body                  escaped AttributeError: 'list' object has no attribute 'get' @ 449, in _session_id
+    200  not json                                                 unparseable body            
+  --- /v1/messages
+    500  {"tools":[null]}                                         tools non-mapping element      escaped AttributeError: 'NoneType' object has no attribute 'get' @ 374, in normalize
+    500  {"messages":[null]}                                      messages non-mapping element   escaped AttributeError: 'NoneType' object has no attribute 'get' @ 402, in normalize
+    500  {"messages":["x"]}                                       messages str element           escaped AttributeError: 'str' object has no attribute 'get' @ 402, in normalize
+    200  {"system":[null]}                                        system non-mapping block    
+    200  {"messages":[{"content":[null]}]}                        content non-mapping block   
+    200  {"messages":[{"role":"user","content":"x"}]}             well-formed control         
+    500  [1,2]                                                    non-dict body                  escaped AttributeError: 'list' object has no attribute 'get' @ 345, in normalize
+    500  not json                                                 unparseable body               escaped json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0) @ 587, in proxy_messages
+
+Reads:  base's `/v1/messages` answers **500** on exactly those three bodies, and the recorder names base's own
+        `normalize()` as the source (`buster_ripper.py:374` — the tools `t.get("name","")` loop; `:402` — the
+        messages `msg.get("content")` loop), while the control body and `{"system":[null]}` answer **200** through the
+        same stub, so those 500s are not transport noise. The direct `normalize()` table proves it again with no
+        transport in the way. §1 shows the package doing the same at 6508941 and at HEAD.
+        **On `/v1/messages` the crash is base's own behavior, faithfully migrated: parity protects it.**
+
+================================================================================
+§4  The narrowing's invariant: full `normalize()` vs the system-strip step, digest-for-digest
+================================================================================
+--- A: digest equality, full normalize() vs system-strip step only
+    [vllm/no-strip-date] documented client, string system, nonce              MATCH
+    [vllm/no-strip-date] documented client, block system, nonce + cache_control MATCH
+    [vllm/no-strip-date] nonce-only system block (becomes empty after strip)  MATCH
+    [vllm/no-strip-date] no system key                                        MATCH
+    [vllm/no-strip-date] system non-mapping block                             MATCH
+    [vllm/no-strip-date] system list of mixed                                 MATCH
+    [vllm/no-strip-date] tools reordered, system str without nonce            MATCH
+    [vllm/no-strip-date] cache_control on system blocks only                  MATCH
+    [vllm/no-strip-date] images present (strip path)                          MATCH
+    [vllm/no-strip-date] differing digests across 18 cases: 0
+    [ sglang/STRIP_DATE] documented client, string system, nonce              MATCH
+    [ sglang/STRIP_DATE] documented client, block system, nonce + cache_control MATCH
+    [ sglang/STRIP_DATE] nonce-only system block (becomes empty after strip)  MATCH
+    [ sglang/STRIP_DATE] no system key                                        MATCH
+    [ sglang/STRIP_DATE] system non-mapping block                             MATCH
+    [ sglang/STRIP_DATE] system list of mixed                                 MATCH
+    [ sglang/STRIP_DATE] tools reordered, system str without nonce            MATCH
+    [ sglang/STRIP_DATE] cache_control on system blocks only                  MATCH
+    [ sglang/STRIP_DATE] images present (strip path)                          MATCH
+    [ sglang/STRIP_DATE] differing digests across 18 cases: 0
+
+Reads:  **zero differing digests** over 9 bodies × 2 nonce states × 2 axes (18 per axis). The battery is the
+        documented Claude Code shape (billing nonce at system position 0, as a string and as a block), the
+        block-only-nonce case that `_strip_billing_from_blocks` deletes outright, `cache_control` on system blocks
+        (step 3 touches `system` but only deletes keys the digest never reads), tools reordering, `STRIP_IMAGES` on
+        with an image present, and the no-system-key and non-dict-block shapes. This is the measurement behind the
+        claim that the invariant `DC-CR3-F-02-r1` protects — the digest is keyed on the system text with the
+        per-request nonce removed — survives under the narrowed call: `session_id()` reads `system` only
+        (`session.py:93-98`) and `_normalize_system` is the only one of the four steps that writes `system`'s text.
+
+================================================================================
+§5  What the narrowed call does to the route, measured
+================================================================================
+--- B: count_tokens with the route's normalize rebound to the system-strip step
+    200  {"tools":[null]}
+    200  {"messages":[null]}
+    200  {"messages":["x"]}
+    200  {"system":[null]}
+    200  {"messages":[{"content":[null]}]}
+    500  [1,2]
+    200  not json
+
+Reads:  with `count_tokens`' normalize rebound in-memory to the system-strip step, the three bodies answer **200**
+        again and the non-dict body still answers 500 — the column becomes base's column (§2) and pre-range's column
+        (§1) exactly. No repo byte was involved: the rebound name lives in the probe process only.
+
+================================================================================
+§6  The reviewer's third raise site (`normalize.py:192`) — corrected precisely
+================================================================================
+--- C: is normalize.py:192 (_normalize_date) independently reachable today?
+    {"tools":[null]}         raises AttributeError at normalize.py:75 (_normalize_tools)
+    {"messages":[null]}      raises AttributeError at normalize.py:117 (_strip_cache_control_from_messages)
+    {"messages":["x"]}       raises AttributeError at normalize.py:117 (_strip_cache_control_from_messages)
+    with :117 alone hardened (simulated skip of non-mapping messages):
+    {"tools":[null]}         raises AttributeError at normalize.py:75 (_normalize_tools)
+    {"messages":[null]}      raises AttributeError at normalize.py:192 (_normalize_date)
+    {"messages":["x"]}       raises AttributeError at normalize.py:192 (_normalize_date)
+
+Reads:  under `STRIP_DATE` + sglang, `:192` (`_normalize_date`'s `msg.get("role")`) belongs to the same class but is
+        **not independently reachable at HEAD**: every non-mapping `messages` element dies at `:117` first, because
+        step 3 runs before step 4 over the same list. It becomes the raising site only once `:117` is hardened —
+        which is what the second block above shows. The consequence for routing: hardening "the two element loops" is
+        not a complete version of that candidate; the complete version is three loops, and §7 shows what it costs.
+
+================================================================================
+§7  The rejected candidate's blast radius, measured on `/v1/messages`
+================================================================================
+--- D: blast radius of hardening normalize()'s two element loops, on /v1/messages
+    as landed (HEAD)   [base does the same: 500 at normalize :374/:402]
+      500  {"tools":[null]}
+      500  {"messages":[null]}
+      500  {"messages":["x"]}
+    with the two element loops hardened (simulated):
+      502  {"tools":[null]}   <- diverges from base's 500 on the same body
+      502  {"messages":[null]}   <- diverges from base's 500 on the same body
+      502  {"messages":["x"]}   <- diverges from base's 500 on the same body
+    with all three loops hardened (simulated):
+      502  {"tools":[null]}
+      502  {"messages":[null]}
+      502  {"messages":["x"]}
+
+Reads:  HEAD as landed 500s on the trio at `/v1/messages`, and §3 shows base 500s on the same three bodies at the
+        same route. Simulating the reviewer's alternative — hardening `normalize()`'s element loops — moves that
+        route from **500 to 502**: the request now survives normalization and reaches the relay. That is the proxy
+        answering differently than base does, on the route `G-003` exists to hold still, with a decision the plan
+        never authorized (what a proxy should answer to schema-invalid input) doing the work.
+
+================================================================================
+§8  CR4-F-02 — the one-byte file ending
+================================================================================
+$ git show 6508941:tests/test_upstream_answer_relay.py | tail -c 20 | xxd     # pre-range: one trailing LF
+00000000: 655f 6b77 6172 6773 225d 203d 3d20 7661  e_kwargs"] == va
+00000010: 6c75 650a                                lue.
+
+$ tail -c 2 tests/test_upstream_answer_relay.py | xxd                        # HEAD: 0a0a
+00000000: 0a0a                                     ..
+
+$ git show 6508941:tests/test_dump.py | tail -c 3 | xxd                      # sibling already 0a0a pre-range
+00000000: 5d0a 0a                                  ]..
+
+$ ls -d .github/workflows; grep -n "tool.ruff" pyproject.toml
+ls: .github/workflows: No such file or directory
+(no match)
+
+$ git log --oneline 6508941..HEAD -- tests/test_upstream_answer_relay.py
+9c90675 Checkpoint 191: feat(transport): restore base transport + decode-totality contract (CR3 wave T018-T020)
+
+
+Reads:  the shape was introduced by the range (`9c90675`, Checkpoint 191 — the CR3 wave's `T018`/`T019`/`T020`
+        commit), the pre-existing sibling `tests/test_dump.py` carried the same shape before the range and still does,
+        and nothing in this repository consumes a file's final blank line: no `.github/workflows` directory exists,
+        `pyproject.toml` carries no `[tool.ruff]`, and the tree's only lint row (`QB:lint/ruff-f-select-findings`)
+        runs `uvx ruff check --select F`, a rule family that does not include `W391`.
+
+================================================================================
+§9  Re-derivation
+================================================================================
+Scratch trees: `git archive <rev> | tar -x` for 72e3a1c6 / 6508941 / c5e2be4.
+Harnesses, preserved beside this file so the measurement is re-runnable without this pass's context:
+`cr4-probe-harness/probe_pkg.py` (package app, any tree, any axis), `cr4-probe-harness/probe_base2.py` (base
+monolith + a stdlib upstream stub + a pure-ASGI exception recorder), `cr4-probe-harness/probe_closure.py` (digest
+battery, narrowed-call rebound, masking probe, blast radius). Package probes run on the repository's own `.venv` interpreter with `PYTHONPATH` set to the snapshot, which
+each transcript echoes on its `package under test:` line. Base probes run under
+`uv run --no-project --with fastapi --with httpx --with uvicorn --with click`.
+Zero repo bytes written by this pass; zero project suite executed; the only code run is the two applications against
+loopback.

@@ -1,0 +1,1891 @@
+# 091-yield-phase QA gate ATTEMPT on HEAD 83de78c77e67ed13ed1ec8d8dab324a8d988e97f — 2026-10-08T00:03:48Z
+# upstream preflight (declared endpoint, no proxy env):
+  GET http://hyperipper.local:30001/v1/models -> 000
+  curl exit 7 (connection refused)
+
+============================= test session starts ==============================
+platform darwin -- Python 3.13.8, pytest-9.0.2, pluggy-1.6.0 -- /Users/alexhubitski/Projects/buster-ripper/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/alexhubitski/Projects/buster-ripper
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.1.0, asyncio-1.3.0, aiohttp-1.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/qa/test_qap_ms001.py::test_tc100_collapsed_format_defers_every_write_until_a_flush FAILED [  9%]
+tests/qa/test_qap_ms001.py::test_tc107_no_format_configured_produces_the_documented_layout FAILED [ 18%]
+tests/qa/test_qap_ms001.py::test_tc108_documented_format_preserves_contents_at_2n_writes FAILED [ 27%]
+tests/qa/test_qap_ms001.py::test_tc108_sensitivity_documented_line_pattern_distinguishes_drift PASSED [ 36%]
+tests/qa/test_qap_ms001.py::test_sensitivity_upstream_oracle_distinguishes_transport_failure_from_a_relayed_body PASSED [ 45%]
+tests/qa/test_qap_ms001.py::test_tc001_documented_write_failure_still_returns_the_upstream_response FAILED [ 54%]
+tests/qa/test_qap_ms001.py::test_tc001_collapsed_flush_failure_still_returns_the_upstream_response FAILED [ 63%]
+tests/qa/test_qap_ms001.py::test_hostile_r1_unknown_dump_format_is_refused_and_writes_nothing PASSED [ 72%]
+tests/qa/test_qap_ms001.py::test_hostile_r1_body_parse_boundaries_on_the_documented_writer FAILED [ 81%]
+tests/qa/test_qap_ms001.py::test_hostile_r2_documented_writer_does_not_escape_the_dump_root FAILED [ 90%]
+tests/qa/test_qap_ms001.py::test_r5_near_miss_session_ids_are_not_merged FAILED [100%]
+
+=================================== FAILURES ===================================
+_________ test_tc100_collapsed_format_defers_every_write_until_a_flush _________
+
+self = <urllib.request.HTTPHandler object at 0x10795d7f0>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x10795d400>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x10795e270>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10795d7f0>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x10795d400>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x10795e270>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_tc100_collapsed_format_de0')
+
+    def test_tc100_collapsed_format_defers_every_write_until_a_flush(tmp_path):
+        system = "qa-ms001-defer"
+        dump = tmp_path / "dump"
+        report_path = tmp_path / "report-tc100.json"
+>       proxy = Proxy(
+            dump,
+            tmp_path / "logs",
+            extra_args=["--dump-format", COLLAPSED],  # no flush parameter: the directive stands
+            counted_report=report_path,
+        )
+
+tests/qa/test_qap_ms001.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+________ test_tc107_no_format_configured_produces_the_documented_layout ________
+
+self = <urllib.request.HTTPHandler object at 0x10793a350>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x10793b110>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x10793bed0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10793a350>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x10793b110>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x10793bed0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_tc107_no_format_configure0')
+
+    def test_tc107_no_format_configured_produces_the_documented_layout(tmp_path):
+        system = "qa-ms001-default"
+        dump = tmp_path / "dump"
+>       proxy = Proxy(dump, tmp_path / "logs")  # no --dump-format: the default clause under test
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/test_qap_ms001.py:235: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+_________ test_tc108_documented_format_preserves_contents_at_2n_writes _________
+
+self = <urllib.request.HTTPHandler object at 0x1079f8190>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x1079f8690>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x1079f91d0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x1079f8190>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x1079f8690>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x1079f91d0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_tc108_documented_format_p0')
+
+    def test_tc108_documented_format_preserves_contents_at_2n_writes(tmp_path):
+        system = "qa-ms001-documented"
+        dump = tmp_path / "dump"
+        report_path = tmp_path / "report-tc108.json"
+>       proxy = Proxy(
+            dump,
+            tmp_path / "logs",
+            extra_args=["--dump-format", "documented"],
+            counted_report=report_path,
+        )
+
+tests/qa/test_qap_ms001.py:265: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+___ test_tc001_documented_write_failure_still_returns_the_upstream_response ____
+
+self = <urllib.request.HTTPHandler object at 0x10793b9d0>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107933bb0>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107933ce0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10793b9d0>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107933bb0>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107933ce0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_tc001_documented_write_fa0')
+
+    def test_tc001_documented_write_failure_still_returns_the_upstream_response(tmp_path):
+        broken = "qa-ms001-fault-documented"
+        control = "qa-ms001-fault-control"
+        dump = tmp_path / "dump"
+        sid_dir = _read_only_session_dir(dump, broken)
+>       proxy = Proxy(dump, tmp_path / "logs")  # documented: the write path raises per turn
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/test_qap_ms001.py:404: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+____ test_tc001_collapsed_flush_failure_still_returns_the_upstream_response ____
+
+self = <urllib.request.HTTPHandler object at 0x10793b110>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107a30e90>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107a30fc0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10793b110>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107a30e90>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107a30fc0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_tc001_collapsed_flush_fai0')
+
+    def test_tc001_collapsed_flush_failure_still_returns_the_upstream_response(tmp_path):
+        system = "qa-ms001-fault-collapsed"
+        dump = tmp_path / "dump"
+        sid_dir = _read_only_session_dir(dump, system)
+>       proxy = Proxy(
+            dump,
+            tmp_path / "logs",
+            extra_args=["--dump-format", COLLAPSED],  # no flush parameter: the flush is shutdown's
+        )
+
+tests/qa/test_qap_ms001.py:432: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+________ test_hostile_r1_body_parse_boundaries_on_the_documented_writer ________
+
+self = <urllib.request.HTTPHandler object at 0x10793bb10>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x10797c710>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x10797c5f0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10793bb10>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x10797c710>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x10797c5f0>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_hostile_r1_body_parse_bou0')
+
+    def test_hostile_r1_body_parse_boundaries_on_the_documented_writer(tmp_path):
+        dup = "qa-ms001-hostile-dupkeys"
+        nl = "qa-ms001-hostile-trailingnl"
+        dump = tmp_path / "dump"
+>       proxy = Proxy(dump, tmp_path / "logs")  # documented default: the writer under audit
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/test_qap_ms001.py:486: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+_______ test_hostile_r2_documented_writer_does_not_escape_the_dump_root ________
+
+self = <urllib.request.HTTPHandler object at 0x10793b250>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107a9c490>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107a9cf30>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10793b250>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107a9c490>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107a9cf30>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_hostile_r2_documented_wri0')
+
+    def test_hostile_r2_documented_writer_does_not_escape_the_dump_root(tmp_path):
+        dangling = "qa-ms001-r2-dangling"
+        escaped = "qa-ms001-r2-indexlink"
+        healthy = "qa-ms001-r2-sentinel"
+        dump = tmp_path / "dump"
+        os.makedirs(str(dump))
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        dangling_target = outside / "dangling-target"
+        canary = outside / "canary.txt"
+    
+        os.symlink(str(dangling_target), os.path.join(str(dump), session_id(dangling)))
+        escaped_dir = os.path.join(str(dump), session_id(escaped))
+        os.makedirs(escaped_dir)
+        os.symlink(str(canary), os.path.join(escaped_dir, "index.txt"))
+    
+>       proxy = Proxy(dump, tmp_path / "logs")  # documented default
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/test_qap_ms001.py:543: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+_________________ test_r5_near_miss_session_ids_are_not_merged _________________
+
+self = <urllib.request.HTTPHandler object at 0x10793b750>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107a9e030>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107a9e250>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+>               h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1338: in request
+    self._send_request(method, url, body, headers, encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1384: in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1333: in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1093: in _send_output
+    self.send(msg)
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1037: in send
+    self.connect()
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/http/client.py:1003: in connect
+    self.sock = self._create_connection(
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:864: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('hyperipper.local', 30001), timeout = 5, source_address = None
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+>               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 61] Connection refused
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/socket.py:849: ConnectionRefusedError
+
+During handling of the above exception, another exception occurred:
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/harness.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:489: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:506: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:466: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1348: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPHandler object at 0x10793b750>
+http_class = <class 'http.client.HTTPConnection'>
+req = <urllib.request.Request object at 0x107a9e030>, http_conn_args = {}
+host = 'hyperipper.local:30001'
+h = <http.client.HTTPConnection object at 0x107a9e250>
+headers = {'Connection': 'close', 'Host': 'hyperipper.local:30001', 'User-Agent': 'Python-urllib/3.13'}
+
+    def do_open(self, http_class, req, **http_conn_args):
+        """Return an HTTPResponse object for the request, using http_class.
+    
+        http_class must implement the HTTPConnection API from http.client.
+        """
+        host = req.host
+        if not host:
+            raise URLError('no host given')
+    
+        # will parse host:port
+        h = http_class(host, timeout=req.timeout, **http_conn_args)
+        h.set_debuglevel(self._debuglevel)
+    
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items()
+                        if k not in headers})
+    
+        # TODO(jhylton): Should this be redesigned to handle
+        # persistent connections?
+    
+        # We want to make an HTTP/1.1 request, but the addinfourl
+        # class isn't prepared to deal with a persistent connection.
+        # It will try to read all remaining data from the socket,
+        # which will block while the server waits for the next request.
+        # So make sure the connection gets closed after the (only)
+        # request.
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+    
+        if req._tunnel_host:
+            tunnel_headers = {}
+            proxy_auth_hdr = "Proxy-Authorization"
+            if proxy_auth_hdr in headers:
+                tunnel_headers[proxy_auth_hdr] = headers[proxy_auth_hdr]
+                # Proxy-Authorization should not be sent to origin
+                # server.
+                del headers[proxy_auth_hdr]
+            h.set_tunnel(req._tunnel_host, headers=tunnel_headers)
+    
+        try:
+            try:
+                h.request(req.get_method(), req.selector, req.data, headers,
+                          encode_chunked=req.has_header('Transfer-encoding'))
+            except OSError as err: # timeout error
+>               raise URLError(err)
+E               urllib.error.URLError: <urlopen error [Errno 61] Connection refused>
+
+../../.local/share/uv/python/cpython-3.13.8-macos-aarch64-none/lib/python3.13/urllib/request.py:1322: URLError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/cy/3w2sfwd55yjbqhzvrs7dw7lh0000gn/T/pytest-of-alexhubitski/pytest-906/test_r5_near_miss_session_ids_0')
+
+    def test_r5_near_miss_session_ids_are_not_merged(tmp_path):
+        a = "qa-ms001-identity-alpha-0001"
+        b = "qa-ms001-identity-alpha-0002"  # differs in the last character only
+        dump = tmp_path / "dump"
+        os.makedirs(str(dump))
+        foreign_log = os.path.join(str(dump), session_id(a), COLLAPSED + ".log")
+        os.makedirs(os.path.dirname(foreign_log))
+        with open(foreign_log, "w", encoding="utf-8") as f:
+            f.write("foreign collapsed artifact — must survive untouched\n")
+        before = read_text(foreign_log)
+    
+>       proxy = Proxy(dump, tmp_path / "logs")  # documented: the identity axis under test
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/qa/test_qap_ms001.py:583: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/qa/harness.py:182: in __init__
+    require_upstream()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def require_upstream() -> None:
+        """Fail closed before a gate can run against a DNS/connection-error baseline.
+    
+        Probe the declared endpoint directly, without ambient HTTP proxy settings.
+        An HTTP error still establishes that the remote service answered; DNS,
+        connection, and timeout failures do not.
+        """
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            with opener.open(f"{UPSTREAM}/v1/models", timeout=5) as response:
+                if response.status >= 500:
+                    raise RuntimeError(f"required live upstream {UPSTREAM} returned {response.status}")
+                response.read(1)
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise RuntimeError(f"required live upstream {UPSTREAM} returned {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+>           raise RuntimeError(f"required live upstream {UPSTREAM} unavailable: {exc}") from exc
+E           RuntimeError: required live upstream http://hyperipper.local:30001 unavailable: <urlopen error [Errno 61] Connection refused>
+
+tests/qa/harness.py:58: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/qa/test_qap_ms001.py::test_tc100_collapsed_format_defers_every_write_until_a_flush
+FAILED tests/qa/test_qap_ms001.py::test_tc107_no_format_configured_produces_the_documented_layout
+FAILED tests/qa/test_qap_ms001.py::test_tc108_documented_format_preserves_contents_at_2n_writes
+FAILED tests/qa/test_qap_ms001.py::test_tc001_documented_write_failure_still_returns_the_upstream_response
+FAILED tests/qa/test_qap_ms001.py::test_tc001_collapsed_flush_failure_still_returns_the_upstream_response
+FAILED tests/qa/test_qap_ms001.py::test_hostile_r1_body_parse_boundaries_on_the_documented_writer
+FAILED tests/qa/test_qap_ms001.py::test_hostile_r2_documented_writer_does_not_escape_the_dump_root
+FAILED tests/qa/test_qap_ms001.py::test_r5_near_miss_session_ids_are_not_merged
+========================= 8 failed, 3 passed in 17.79s =========================
