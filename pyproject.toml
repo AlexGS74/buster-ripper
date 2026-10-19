@@ -1,0 +1,48 @@
+[project]
+name = "buster-ripper"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp",
+    "click",
+]
+
+[project.scripts]
+buster-ripper = "buster_ripper.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--cov=buster_ripper --cov-report=term-missing --cov-fail-under=80"
+# Replaces pytest's default list — the defaults are retained alongside `qa`
+# so a bare `uv run pytest` never collects the network/signals gates in
+# tests/qa/ (selected explicitly for MS gates instead).
+norecursedirs = [".*", "build", "dist", "node_modules", "venv", "*.egg", "_darcs", "CVS", "{arch}", "qa"]
+
+[tool.ruff.lint]
+# Minimal gate: the F family only. E is not selected because the tracked legacy
+# reference copy opts out of E501 and no line-length policy exists in this repo.
+select = ["F"]
+
+# Exclude thin route handlers from coverage - they're integration glue,
+# not business logic. Core modules (normalize, utils, backend, config)
+# are where we need coverage.
+[tool.coverage.run]
+source = ["buster_ripper"]
+omit = [
+    "buster_ripper/routes/*",
+    "buster_ripper/main.py",
+    "buster_ripper/server.py",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-aiohttp>=1.1.0",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+]
