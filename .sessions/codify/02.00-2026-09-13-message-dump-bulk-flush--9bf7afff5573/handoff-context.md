@@ -37,7 +37,7 @@
 - Moved verbatim to [handoff-archive.md](handoff-archive.md) §Trimmed 2026-10-18 (`098-assumption-decide`); the settled decisions and protected invariants remain canonical in `decisions.md`/`plan-summary.md`.
 
 ## Planned Task Context
-- **PR #1 review round 5 (2026-10-19, `713d3af`) — repair lane, ONE wave (one brief); the two `dump.py` append sites are the 1% record `PR1-R5-1`, no task.** The CODIFY session stays closed; the vehicle is a lite brief under `.sessions/lite/`. Round line: **round 5, late**. The brief covers the messages retry control field and the preserved-thinking backend gate, plus the three doc corrections; `dump.py` stays untouched.
+- **PR #1 review round 5 (2026-10-19, `713d3af`) — repair lane, ONE wave (one brief); the two `dump.py` append sites are the 1% record `PR1-R5-1`, no task.** The CODIFY session stays closed; the vehicle is a lite brief under `00bab65:.sessions/lite/`. Round line: **round 5, late**. The brief covers the messages retry control field and the preserved-thinking backend gate, plus the three doc corrections; `dump.py` stays untouched.
 
 ### Wave 1 — `2026-10-19-pr1-r5-messages` (`messages.py`, `config.py`, `main.py`, `README.md`)
 
@@ -79,7 +79,7 @@ Rejected candidates:
 - leave it and record: preserves a retry that can never recover.
 Risk shape: unchanged - two field names and two log strings; the probe, the dispatch and every response arm are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r5-messages/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r5-messages/brief.md`, step 1
 
 ### DC-PR1-R5-2-r1
 Finding: PR1-R5-3 (PR #1 review comment 4318096166, P2 — `messages.py:78` injects `chat_template_kwargs` on `/v1/messages`, a field SGLang v0.5.9's Anthropic schema drops)
@@ -95,7 +95,7 @@ Rejected candidates:
 - require a newer SGLang: the repo does not control the upstream and no verified version supports the field.
 Risk shape: unchanged - one guard and a return value in a small function, two statement swaps in `handle_messages`; the chat route, the dump path and every response arm are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r5-messages/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r5-messages/brief.md`, step 1
 
 ### DC-PR1-R5-3-r1
 Finding: PR1-R5-C1/C2/C3 (family sweep of 4318096166 — `config.py:45-49`, `main.py:107-110`, `README.md:94-104` advertise the pair without the SGLang limitation)
@@ -109,7 +109,7 @@ Rejected candidates:
 - delete the flag or its README section: reverses `T023` and `FK-011` Option A.
 Risk shape: unchanged - three doc strings; no code, test or record byte moves.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r5-messages/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r5-messages/brief.md`, step 1
 
 
 ## Capped seams

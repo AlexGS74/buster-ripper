@@ -213,7 +213,7 @@ Separation reasons: none from interference (three different causes in three diff
 - `handoff-context.md` §Planned Task Context: the one wave with its three briefs, member findings, ordering and separation reasons.
 - `handoff-context.md` §Accepted risks: unchanged (no new accepted risk).
 - `handoff-context.md` §Elevated to user: unchanged (no new 1%/0.01% item).
-- Lite briefs under `.sessions/lite/2026-10-19-pr1-r3-*/brief.md`.
+- Lite briefs under `00bab65:.sessions/lite/2026-10-19-pr1-r3-*/brief.md`.
 - No `roadmap.md` or chunk-row change: every finding is repaired in this wave.
 
 ## Notes

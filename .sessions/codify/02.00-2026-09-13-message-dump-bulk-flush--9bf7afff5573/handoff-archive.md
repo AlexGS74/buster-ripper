@@ -3149,7 +3149,7 @@ Moved from `handoff-context.md` at the round-4 routing pass so the baton stays u
 ### round 3 Planned Task Context (three briefs, `f37d475`)
 
 - **PR #1 review round 3 (2026-10-19, `f37d475`) — repair lane, ONE wave, three briefs.** The CODIFY session stays
-  closed; the vehicles are lite briefs under `.sessions/lite/`. Round line: **round 3, not late**. The three roots are
+  closed; the vehicles are lite briefs under `00bab65:.sessions/lite/`. Round line: **round 3, not late**. The three roots are
   independent (three modules, three causes): no prerequisite, no capacity ordering (`chat.py` untouched at 300/300), no `RM-001`.
   Order inside the wave is only for commit attribution: the two `server.py` briefs run sequentially so their edits never
   interleave in one lite run.
@@ -3216,7 +3216,7 @@ Moved from `handoff-context.md` at the round-4 routing pass so the baton stays u
 
 ### round 1 Planned Task Context (three waves, `0d465ec`)
 
-- **PR #1 review round 1 (2026-10-19, `0d465ec`) — repair lane, three waves.** The CODIFY session stays closed; the vehicles are lite briefs under `.sessions/lite/`. Round line: **round 1, not late**. Anchor and membership are recorded below; every finding keeps its own ledger row, brief and lite-yield.
+- **PR #1 review round 1 (2026-10-19, `0d465ec`) — repair lane, three waves.** The CODIFY session stays closed; the vehicles are lite briefs under `00bab65:.sessions/lite/`. Round line: **round 1, not late**. Anchor and membership are recorded below; every finding keeps its own ledger row, brief and lite-yield.
 
 ### Wave 1 — chat relay fidelity (`2026-10-18-pr1-chat-relay-fidelity`)
 
@@ -3297,7 +3297,7 @@ Rejected candidates:
 - Add a shared helper outside `chat.py`: the capacity gate forbids an arbitrary helper solely to move lines; `chat.py` at 300/300 is handled by Wave 1's net-negative brief, not by a new module.
 Risk shape: unchanged - one private arm in an existing route function; the documented path, the error branch, the non-stream relay and the request transforms are byte-unchanged.
 Deferred additive work: a `seam-S11` reading for the chat relay — `RM-016`'s recorded evidence obligation; trigger = the next `S11` composition dispatch on these bytes.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-chat-post-commit/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-chat-post-commit/brief.md`, step 1
 
 ### DC-PR1-R1-2-r1
 Finding: PR1-R1-2 (PR #1 review comment 4309720765, P2 — `passthrough.py:52` timeout class)
@@ -3312,7 +3312,7 @@ Rejected candidates:
 - Catch `asyncio.TimeoutError` by importing `asyncio` at each site: the built-in `TimeoutError` is the same class on Python ≥3.11; the import adds lines and a module dependency for no behavioral gain.
 Risk shape: unchanged - the only observable change is the timeout class reaching each site's existing authored envelope; no new mechanism and no new import.
 Deferred additive work: `S17-N4`'s per-request ceiling remains with `RM-010`'s owner; trigger = a new upstream-timeout config channel.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-transport-parity/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-transport-parity/brief.md`, step 1
 
 ### DC-PR1-R1-3-r1
 Finding: PR1-R1-3 (PR #1 review comment 4309720772, P2 — `chat.py:221` unfixed re-serialization)
@@ -3327,7 +3327,7 @@ Rejected candidates:
 - Relay the original bytes on both paths: the fixed path's body is not upstream's, so it must be re-serialized; only the unfixed path may relay `content`.
 Risk shape: unchanged - one private helper's return contract and one call site; the fixed path still re-serializes; the non-JSON fall-through and the overflow probe are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-chat-relay-fidelity/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-chat-relay-fidelity/brief.md`, step 1
 
 ### DC-PR1-R1-5-r1
 Finding: PR1-R1-5 (PR #1 review comment 4309720778, P2 — `dump.py:155` live symlinked session directory)
@@ -3342,7 +3342,7 @@ Rejected candidates:
 - Resolve the session directory and verify containment under `DUMP_DIR`: `Path.resolve()` follows the symlink and turns the escape into a legitimate-looking path; the writer must refuse, not normalize.
 Risk shape: unchanged - one guard at state creation; both writers inherit it; no format, record or write-count change.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-dump-containment/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-dump-containment/brief.md`, step 1
 
 ### DC-PR1-R1-7-r1
 Finding: PR1-R1-7 (PR #1 review comment 4309720784, P2 — `chat.py:190` streaming error headers)
@@ -3356,7 +3356,7 @@ Rejected candidates:
 - Hand-pick `Retry-After` and rate-limit names: a hand-kept list drifts from the upstream and duplicates the shared filter's job.
 Risk shape: unchanged - status and bytes already travel; only which end-to-end names travel changes, and the shared hop-by-hop drop is untouched.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-chat-relay-fidelity/brief.md`, step 2
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-chat-relay-fidelity/brief.md`, step 2
 
 ### DC-PR1-R1-8-r1
 Finding: PR1-R1-8 (PR #1 review comment 4309720787, P2 — `chat.py:149` streaming chat overflow)
@@ -3370,7 +3370,7 @@ Rejected candidates:
 - Parse the error with `resp.json()`: a non-JSON error body would raise a new exception and turn a relayed error into a proxy 502; `_chat_answer`'s read-once JSON guard is the existing correct shape.
 Risk shape: unchanged - the error arm now uses the same read-once parse and overflow probe as the non-stream arm; the success stream path and the status/bytes relay are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-chat-relay-fidelity/brief.md`, step 3
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-chat-relay-fidelity/brief.md`, step 3
 
 ### DC-PR1-R1-9-r1
 Finding: PR1-R1-9 (PR #1 review comment 4309720790, P2 — `passthrough.py:34` redirects followed)
@@ -3385,7 +3385,7 @@ Rejected candidates:
 - Follow the redirect and relay the final response: changes the status and drops `Location`, the exact defect.
 Risk shape: unchanged - one per-request operand per call site; the shared session and connector are untouched.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-18-pr1-transport-parity/brief.md`, step 2
+Task: lite brief `00bab65:.sessions/lite/2026-10-18-pr1-transport-parity/brief.md`, step 2
 
 ### round 3 Deterministic Closure Ledger rows (`DC-PR1-R3-*`)
 
@@ -3402,7 +3402,7 @@ Rejected candidates:
 - Relay the upstream's `Set-Cookie` downstream but keep the jar: preserves the verified cross-caller leak.
 Risk shape: unchanged - one constructor operand; the connector, the TLS posture, every route and every relay are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r3-session-cookie/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r3-session-cookie/brief.md`, step 1
 
 ### DC-PR1-R3-2-r1
 Finding: PR1-R3-2 (PR #1 review comment 4316745957, P2 — `backend.py:62-69` transient probe result cached permanently)
@@ -3418,7 +3418,7 @@ Rejected candidates:
 - Keep the permanent cache and record it: leaves the verified defect in place, contrary to the user's round-3 instruction.
 Risk shape: unchanged - one private coroutine in `backend.py` plus one spawn and one cancel line in `server.py`; the probe, its 5 s bound, the `unknown` fallback value and all three consumers are byte-unchanged; no new CLI surface.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r3-backend-retry/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r3-backend-retry/brief.md`, step 1
 
 ### DC-PR1-R3-3-r1
 Finding: PR1-R3-3 (PR #1 review comment 4316745969, P2 — `dump.py:265-273` diff control lines unterminated; family: the documented `turn_NNN.diff` and the `change-focused` record)
@@ -3433,7 +3433,7 @@ Rejected candidates:
 - Leave the artifact and record it: leaves the advertised artifact not consumable by its reader, and the fix is one operand.
 Risk shape: unchanged - one operand in the single helper both writers and all three mirrors share; the `+A/-R` counts, both summary lines, the record separators, the `self-contained` rendering and `turn_000.json` are byte-unchanged; `dump.py` stays net 0 lines in its 301–500 band.
 Deferred additive work: `S21`'s recomposition is owed on the new bytes; the seam is already capped (`§Capped seams`), so no task, Fork or wave opens from it; trigger = the next composition dispatch on these bytes.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r3-diff-control-lines/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r3-diff-control-lines/brief.md`, step 1
 
 ### Older Planned Task Context, consumed blueprints and pre-round-4 ledger rows
 
@@ -3511,7 +3511,7 @@ Task: T024.001 step 2
 
 ## Planned Task Context
 - **PR #1 review round 4 (2026-10-19, `6a089d8`) — repair lane, TWO waves (one capacity prerequisite, then three briefs in
-  parallel).** The CODIFY session stays closed; the vehicles are lite briefs under `.sessions/lite/`. Round line: **round 4, not
+  parallel).** The CODIFY session stays closed; the vehicles are lite briefs under `00bab65:.sessions/lite/`. Round line: **round 4, not
   late**. Wave 1 is not a finding: it creates the `chat.py` raw-line headroom Wave 2's four chat fixes need. Wave 2's three
   briefs are independent (different files/causes) and run in parallel after Wave 1.
 
@@ -3721,7 +3721,7 @@ Rejected candidates:
 - add the guard as two statements in `handle_chat`: triggers the preventive capacity gate on a function with three gray metrics (`L:29 N:2 C:6`); the helper is the gate's own extraction.
 Risk shape: unchanged - one private parse helper replacing the existing four-line block; `handle_chat`'s statements fall by three, every transform and both request arms are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
 
 ### DC-PR1-R4-2-r1
 Finding: PR1-R4-2 (PR #1 review comment 4317334048, P2 — `messages.py:169-175` streaming error arm loses upstream headers and forces `application/json`)
@@ -3735,7 +3735,7 @@ Rejected candidates:
 - keep `_error_body` and relay raw bytes beside it: leaves a helper whose only purpose is a body no longer relayed; dead code is a change of its own.
 Risk shape: unchanged - the error arm relays the upstream's status, bytes and end-to-end names instead of its decoded text; the success stream, the redirect arm and the non-stream arm are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
 
 ### DC-PR1-R4-3-r1
 Finding: PR1-R4-3 (PR #1 review comment 4317334057, P2 — `chat.py:138` 300 s total deadline stays armed across the SSE relay)
@@ -3749,7 +3749,7 @@ Rejected candidates:
 - no timeout at all for chat: loses the 300 s bound base had on the non-streaming request.
 Risk shape: unchanged - one operand on the existing timeout construction; the relay, the retry loop and both response arms are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
 
 ### DC-PR1-R4-4-r1
 Finding: PR1-R4-4 (PR #1 review comment 4317334067, P2 — `chat.py:82-86` non-mapping eval `chat_template_kwargs` silently loses the injection after removing `max_gen_toks`)
@@ -3764,7 +3764,7 @@ Rejected candidates:
 - add the guard as two statements in `_apply_request_transforms`: triggers the preventive capacity gate on a function with three gray metrics (`L:20 N:2 C:8`); the helper is the gate's own extraction.
 Risk shape: unchanged - one guarded assignment replacing one `setdefault`; the eval profile, the budget and the response transforms are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
 
 ### DC-PR1-R4-5-r1
 Finding: PR1-R4-5 (PR #1 review comment 4317334078, P2 — `image.py:195-198` expiry sweep runs only on the image-write path)
@@ -3779,7 +3779,7 @@ Rejected candidates:
 - leave it and record: leaves the advertised TTL broken for a cached base64 payload.
 Risk shape: unchanged - one new coroutine and two lifecycle lines on the existing background-task pattern; the write path, the TTL comparator, the LRU bound and `get_cached_image` are byte-unchanged; no new CLI option.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-image-expiry/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-image-expiry/brief.md`, step 1
 
 ### DC-PR1-R4-6-r1
 Finding: PR1-R4-6 (PR #1 review comment 4317334102, P2 — `chat.py:141-146` always re-serializes the request body; family: the request direction of every route)
@@ -3794,7 +3794,7 @@ Rejected candidates:
 - leave it and record: base parity ranks the raw forward, and the fix is one helper plus one call-site expression.
 Risk shape: unchanged - one helper and one call-site expression; the eval transforms, the SGLang retry loop and both response arms are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
 
 ### DC-PR1-R4-A1-r1
 Finding: PR1-R4-A1 (family sweep of 4317334042 — `chat.py:177-184` `_raise_chat_overflow` reads `.get` on a non-object upstream answer or a non-mapping `usage`)
@@ -3808,7 +3808,7 @@ Rejected candidates:
 - catch the `AttributeError` in `_make_chat_request`'s arm: widens the transport arm to a body-shape failure and hides the class.
 Risk shape: unchanged - one guard condition and one mapping check; the success relay, the transform path and the retry loop are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-chat-relay/brief.md`, step 1
 
 ### DC-PR1-R4-A2-r1
 Finding: PR1-R4-A2 (family sweep of 4317334042 — `messages.py:241-251` `_note_message_start` reads `.get` on a non-mapping `message`/`usage`, and `_relay_after_commit`'s catch ends the stream)
@@ -3822,7 +3822,7 @@ Rejected candidates:
 - catch it in `_relay_after_commit`: already happens, and that is the defect — the catch cannot distinguish a malformed event from a transport failure.
 Risk shape: unchanged - two guarded reads in a small function; the relay loop, the stats write and the overflow arm are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
 
 ### DC-PR1-R4-A3-r1
 Finding: PR1-R4-A3 (family sweep of 4317334042 — `count_tokens.py:17-26` `_read_body` returns a non-object JSON root to `strip_billing_nonce`)
@@ -3836,7 +3836,7 @@ Rejected candidates:
 - leave it: preserves a reachable 500 with a traceback.
 Risk shape: unchanged - one entry gate in a small function; the stats lookup, the nudge and the estimate are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
 
 ### DC-PR1-R4-E1-r1
 Finding: PR1-R4-E1 (family sweep of 4317334102 — `messages.py:155-158`, `:305-311` always re-serialize the request body; family: the request direction of every route)
@@ -3850,7 +3850,7 @@ Rejected candidates:
 - add a `raw` parameter to `_stream_single_request`: the function is already a hard Length violation and a parameter is an addition.
 Risk shape: unchanged - one helper used at two existing call sites; the streaming and non-streaming arms, the overflow retry and the error arms are byte-unchanged.
 Deferred additive work: none.
-Task: lite brief `.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
+Task: lite brief `00bab65:.sessions/lite/2026-10-19-pr1-r4-messages-relay/brief.md`, step 1
 
 ## Forward
 - Changed: `buster_ripper/routes/chat.py` — shortened `handle_chat`, `_prepare_headers`, `_carries_token` and `_chat_answer` docstrings to one line each; shortened the two `_prepare_headers` comments; removed seven one-line docstrings and two inline comments; 300 → 272 raw lines, no import, statement, branch or signature moved.

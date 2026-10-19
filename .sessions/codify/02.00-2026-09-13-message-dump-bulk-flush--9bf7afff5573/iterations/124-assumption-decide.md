@@ -281,7 +281,7 @@ chat arm is net-zero.
 - `handoff-context.md` §Accepted risks: finding 4 (`RM-011`) and finding 6 (`RM-022`).
 - `handoff-context.md` §Elevated to user: finding 6 (`RM-022`), with `Ask: yes` (the user asked for a fix; the answer is a design decision about restart semantics).
 - `roadmap.md` + `.sessions/codify/roadmap/2026-10-18-message-dump-bulk-flush.md`: new `RM-022`; notes on `RM-010`, `RM-016`, `RM-020` that PR #1 round 1 took them up.
-- Lite briefs under `.sessions/lite/2026-10-18-pr1-*/brief.md`.
+- Lite briefs under `00bab65:.sessions/lite/2026-10-18-pr1-*/brief.md`.
 
 ## Notes
 
