@@ -1,4 +1,0 @@
-threshold: 2279 UTF-8 bytes; artifact immediately: True
-shared session closed
-shutdown payload present: True
-pending bytes after flush: 0
