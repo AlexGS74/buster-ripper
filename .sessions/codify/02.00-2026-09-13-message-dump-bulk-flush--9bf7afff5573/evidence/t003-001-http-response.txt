@@ -1,3 +1,0 @@
-/v1/messages: HTTP 400 {"error": "Invalid JSON"}
-/v1/chat/completions: HTTP 400 {"error": "Invalid JSON"}
-/v1/messages/count_tokens: HTTP 400 {"error": "Invalid JSON"}
