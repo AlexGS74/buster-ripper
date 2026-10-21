@@ -47,7 +47,8 @@ import os
 import signal
 from urllib.parse import urlparse
 
-from tests.qa.harness import Proxy, poll_until, turn_body
+from tests.qa.harness import turn_body
+from tests.qa.harness_process import Proxy, poll_until
 from tests.qa.tls_peer import MARKER, TlsPeer
 
 #: The peer is probed at process start; this bound is generous, and the paired
