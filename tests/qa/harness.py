@@ -118,7 +118,7 @@ def assert_upstream_response(status: int, body: bytes) -> None:
     ``502``, so ``< 500`` separates "the peer answered" from "the proxy could not reach it".
     The body is deliberately **not** inspected — a relayed answer is the peer's own bytes — and
     the dropped ``"Cannot connect"`` limb is recorded in ``chronicle.md``. Whether an error body
-    leaks the proxy's configuration is witnessed at ``tests/test_upstream_answer_relay.py``'s
+    leaks the proxy's configuration is witnessed at ``tests/test_proxy_errors.py``'s
     ``TestLeakFreeErrorBodies``.
     """
     assert 200 <= status < 500, f"valid request failed with HTTP {status}: {body[:300]!r}"
