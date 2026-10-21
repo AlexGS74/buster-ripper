@@ -3,6 +3,7 @@
 - Goal: split `tests/qa/test_qap_ms002.py` and `tests/qa/test_qap_ms004.py` along their scenario/helper boundaries, with behavior unchanged.
 - Target: open (global roadmap); chosen candidates #4/#5; no roadmap row.
 - In scope: `tests/qa/test_qap_ms002.py`, `tests/qa/test_qap_ms004.py`
+- Importers: `tests/qa/test_qap_ms002.py`, `tests/qa/test_qap_ms002_hostile.py`, `tests/qa/test_qap_ms002_flush.py`, `tests/qa/qap_ms002_support.py`, `tests/qa/test_qap_ms004.py`, `tests/qa/test_qap_ms004_adversarial.py`, `tests/qa/qap_ms004_support.py`
 - Out of scope: the taken roadmap rows `RM-001`, `RM-002` and `RM-025` (`origin/fix/tool-reference-scrub`, stale since 2026-09-17); no other QA gate.
 - Verify: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=`
 - Final verify: `uv run pytest`
@@ -17,3 +18,91 @@
 | 4 | tests/qa/test_qap_ms002.py | `File is 634 lines (ideal: <=500)`; `Summary: 15 total issues found in 14 functions` — Long Function: 4, Medium Length: 10, Medium Complexity: 1; top `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2 | none | free |
 | 5 | tests/qa/test_qap_ms004.py | `File is 477 lines (review: <=300)`; `Noise decomposition: 42 trimmable full-line comments`; `Summary: 7 total issues found in 7 functions` — Long Function: 4, Medium Length: 3; `test_tc114_one_posture_governs_every_outbound_call` L:71 N:1 C:4 | none | free |
 - Tool gaps: `quality-backlog.md` is absent from the tree (deleted by the 02.00 squash `3323551`), so its `## Refactoring` section was read from `git show 3323551^:.sessions/codify/02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/quality-backlog.md`; every open refactoring line there already routes to an `RM-*` handle. No CODIFY session at HEAD whose Progress Overview shows implementation not started carries an Anchor Map, so no `planned:` files could be derived. The repo-root scan also flags `buster_ripper_legacy.py` (1017 lines, threshold 700), the tracked base-parity reference copy outside the `buster_ripper/` source root; it is taken by the same stale branch and is not offered.
+
+## Safety net
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` -> 21 passed, 0 skipped (the worktree had no `.venv`; `uv run python -c ...` built it once, then the brief's exact command ran unchanged)
+- Scan: `codify scan path tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py` -> `tests/qa/test_qap_ms002.py` — file 634 lines (ideal <=500); 15 issues in 14 functions: Long Function 4, Medium Length 10, Medium Complexity 1; top: `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2 (Long Function), `test_tc112_timer_resilience` L:44 N:1 C:4 P:1 (Long Function), `test_tc101_session_isolation_near_miss_prompts` L:38 N:0 C:6 P:1 (Long Function, Medium Complexity), `test_tc105_tc109_write_and_file_counts_paired_runs` L:37 N:1 C:5 P:1 (Long Function), `test_hostile_artifact_symlink_escape_no_write` L:30 N:0 C:1 P:1 (Medium Length); `_counted_run` L:20 N:1 C:3 P:3 (Medium Length). `tests/qa/test_qap_ms004.py` — file 477 lines (review <=300); noise decomposition 42 trimmable full-line comments; 7 issues in 7 functions: Long Function 4, Medium Length 3; top: `test_tc114_one_posture_governs_every_outbound_call` L:71 N:1 C:4 P:1, `test_r1_upstream_url_shape_does_not_change_posture` L:45 N:0 C:2 P:1, `test_tc003_untrusted_peer_refused_by_default` L:36 N:0 C:2 P:1, `test_tc113_same_peer_accepted_with_optout` L:34 N:0 C:1 P:1, `test_r1_duplicate_flag_occurrence_honored_once` L:21 N:0 C:2 P:1; `assert_single_client` L:18 N:0 C:1 P:1 (Medium Length)
+- Sizes: tests/qa/test_qap_ms002.py: 634, tests/qa/test_qap_ms004.py: 477
+- Public paths kept: none (neither module defines `__all__`, and nothing outside the repository imports `tests.qa.test_qap_ms002` or `tests.qa.test_qap_ms004`)
+
+## Map
+
+### U0 · comments
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | shrink | module docstring (29 lines: the TC↔VP map, the hostile-tier mapping, the run line, the environment note), the ten 3-line `# ---` banners to their one-line titles, and the two 4-line comments (`:55-58` threshold rationale, `:464-467` clean-exit discriminator) | tests/qa/test_qap_ms002.py | kept reasons: `qa-plan.md` §QA Gate Matrix + §QA Author Passes (the TC↔VP map), `.agents/skills/qa-project/SKILL.md` §Upstream (live upstream, fail closed) and §Capability Declarations (deterministic triggers); the clean-exit discriminator stays in the test, one line |
+| 2 | shrink | module docstring (41 lines: the TC map, the W1/W2 witnesses, the adversarial-tier dispositions, the harness notes), the five 3-line `# ---` banners to their one-line titles, and the per-test narratives (`PATH_DEADLINE` 3 lines, TC-114 8 lines, R5 7 lines) | tests/qa/test_qap_ms004.py | kept reasons: `qa-plan.md` §QA Gate Matrix + §Scenario Contracts (TC-003/113/114, W1/W2), `.agents/skills/qa-project/SKILL.md` §Upstream + §Capability Declarations (loopback peer, readiness/quiescence, no fixed sleeps, no telemetry); the R2/R4 no-surface disposition has no other home in the tree (its iteration report is squashed away), so it stays as one line in the module docstring |
+- Narrow tests: tests/qa/test_qap_ms002.py, tests/qa/test_qap_ms004.py
+- Green after U0: neither file drops a unit — both stay far over 300 (634 -> ~586 and 477 -> ~420), so every split unit below still runs.
+
+### U1 · tests/qa/test_qap_ms002.py: extract the shared constants and text helpers into a support module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `COLLAPSED_FORMATS`, `TURN_SIZE`, `THRESHOLD_AT_TURN_2`, `UNREACHABLE_BYTES`, `TIMER_OFF_INTERVAL` | tests/qa/test_qap_ms002.py | tests/qa/qap_ms002_support.py |
+| 2 | move | `big_text`, `summary_lines` | tests/qa/test_qap_ms002.py | tests/qa/qap_ms002_support.py |
+- Importers to update: tests/qa/test_qap_ms002.py (import block only; `json`, `os`, `re`, `pytest`, `Proxy`, `poll_until` stay)
+- Witnesses to re-point: none (no `invariants/` record names either path)
+- Tests with import lines or patch targets to update: tests/qa/test_qap_ms002.py import block (currently `:31-51`, before U0 shifts it)
+- Narrow tests: tests/qa/test_qap_ms002.py
+
+### U2 · tests/qa/test_qap_ms002.py: move the hostile tier into its own module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `test_hostile_non_utf8_and_empty_body_no_write`, `test_hostile_duplicate_json_keys_last_wins_single_record`, `test_hostile_trailing_newline_body_is_valid`, `test_hostile_dangling_session_dir_symlink_no_write`, `test_hostile_artifact_symlink_escape_no_write` | tests/qa/test_qap_ms002.py | tests/qa/test_qap_ms002_hostile.py |
+- Importers to update: none (new module; its import block pulls `json`, `os`, `assert_upstream_response`, `read_text`, `record_section`, `session_id`, `turn_body`, `Proxy`, `TIMER_OFF_INTERVAL`, `UNREACHABLE_BYTES`)
+- Witnesses to re-point: `qa-plan.md:77` (the QAP-MS002 `Tests:` list) and `qa-plan.md:80` (its run command) gain `tests/qa/test_qap_ms002_hostile.py`; the re-proof lines at `:132`, `:149-150`, `:162` record past runs at fixed HEADs and stay as written
+- Tests with import lines or patch targets to update: tests/qa/test_qap_ms002_hostile.py (new import block); no change to tests/qa/test_qap_ms002.py's import block
+- Narrow tests: tests/qa/test_qap_ms002_hostile.py (5 tests, not selected by the brief's Verify command — the yield must run it explicitly), tests/qa/test_qap_ms002.py (10 remaining)
+
+### U3 · tests/qa/test_qap_ms002.py: move the flush-trigger scenarios and the counted measurement into their own module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `N_TURNS`, `_counted_run`, `test_tc105_tc109_write_and_file_counts_paired_runs`, `test_tc106_volume_flush`, `test_tc110_shutdown_flush`, `test_tc111_interval_flush`, `test_tc112_timer_resilience` | tests/qa/test_qap_ms002.py | tests/qa/test_qap_ms002_flush.py |
+- Importers to update: none (new module; its import block pulls `json`, `os`, `signal`, `pytest`, `assert_upstream_response`, `log_artifacts`, `read_text`, `session_id`, `turn_body`, `Proxy`, `poll_until`, `THRESHOLD_AT_TURN_2`, `TIMER_OFF_INTERVAL`, `UNREACHABLE_BYTES`, `big_text`, `summary_lines`)
+- Witnesses to re-point: `qa-plan.md:77`, `qa-plan.md:80` (same path-only update as U2)
+- Tests with import lines or patch targets to update: tests/qa/test_qap_ms002_flush.py (new import block); tests/qa/test_qap_ms002.py import block (currently `:31-51`; drop `signal`, now unused)
+- Narrow tests: tests/qa/test_qap_ms002_flush.py (6 collected tests, not selected by the brief's Verify command — run it explicitly), tests/qa/test_qap_ms002.py (4 collected tests remaining)
+
+### U4 · tests/qa/test_qap_ms002.py: split the long gate bodies
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | reshape | `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` (parametrized gate): extract `_assert_collapsed_artifact(sid_dir, fmt)` (TC-102: one `<fmt>.log`, arrival order, summary-line forms; returns the text) and `_assert_change_readable(text, fmt)` (TC-103) and `_assert_turn0_recoverable(text, system)` (TC-104) | tests/qa/test_qap_ms002.py | tests/qa/test_qap_ms002.py |
+| 2 | reshape | `test_tc105_tc109_write_and_file_counts_paired_runs`: extract `_assert_counted_collapsed(rep, sid_dir, fmt)` (F=2, per-flush bytes, one file, `N` records) and `_assert_documented_half(rep, sid_dir)` (the `N + 1` files and `2N` writes) | tests/qa/test_qap_ms002_flush.py | tests/qa/test_qap_ms002_flush.py |
+| 3 | reshape | `test_tc101_session_isolation_near_miss_prompts`: extract `_await_both_artifacts(a1, a2, s1, s2)` (the bounded poll) and `_assert_sessions_isolated(dump, s1, s2, t1, t2)` (distinct sids, listing, no cross-records) | tests/qa/test_qap_ms002.py | tests/qa/test_qap_ms002.py |
+| 4 | reshape | `test_tc112_timer_resilience`: extract `_drive_raising_ticks(proxy, artifact, system)` (chmod 444, two turns, poll the logged `PermissionError`, restore 644 in `finally`) | tests/qa/test_qap_ms002_flush.py | tests/qa/test_qap_ms002_flush.py |
+- Importers to update: none
+- Witnesses to re-point: none
+- Tests with import lines or patch targets to update: none (the reshaped helpers stay in the modules that call them)
+- Narrow tests: tests/qa/test_qap_ms002.py, tests/qa/test_qap_ms002_flush.py
+
+### U5 · tests/qa/test_qap_ms004.py: extract the shared constants and assertion helpers into a support module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `PATH_DEADLINE`, `CERT_MARKER`, `CERT_REASON`, `MODEL_PROBE`, `METRICS_POLL`, `PROXIED`, `OUTBOUND_PATHS` | tests/qa/test_qap_ms004.py | tests/qa/qap_ms004_support.py |
+| 2 | move | `start_peer`, `read_report`, `call_paths`, `assert_single_client`, `assert_all_calls_through`, `assert_cert_verification_failure`, `assert_clean_shutdown`, `messages_body` | tests/qa/test_qap_ms004.py | tests/qa/qap_ms004_support.py |
+- Importers to update: tests/qa/test_qap_ms004.py (import block only; `json` and `os` leave with the helpers, while `signal` stays and `urlparse` is needed by both the helpers and the gate bodies)
+- Witnesses to re-point: none (`invariants/` names neither path)
+- Tests with import lines or patch targets to update: tests/qa/test_qap_ms004.py import block (currently `:43-52`, before U0 shifts it)
+- Narrow tests: tests/qa/test_qap_ms004.py
+
+### U6 · tests/qa/test_qap_ms004.py: move the adversarial tier into its own module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `test_r5_trust_identity_pair_is_not_merged`, `test_r1_duplicate_flag_occurrence_honored_once`, `test_r1_upstream_url_shape_does_not_change_posture` | tests/qa/test_qap_ms004.py | tests/qa/test_qap_ms004_adversarial.py |
+- Importers to update: none (new module; its import block pulls `signal`, `urlparse`, `MARKER`, `TlsPeer`, `Proxy`, `poll_until`, `PATH_DEADLINE`, `MODEL_PROBE`, `assert_cert_verification_failure`, `assert_clean_shutdown`, `assert_single_client`, `messages_body`, `read_report`, `start_peer`)
+- Witnesses to re-point: `qa-plan.md:87` (the QAP-MS004 `Tests:` list) and `qa-plan.md:93` (its run command) gain `tests/qa/test_qap_ms004_adversarial.py`; `.sessions/codify/roadmap/2026-10-18-message-dump-bulk-flush.md:45` names the gate file as the carrier of both postures and stays true
+- Tests with import lines or patch targets to update: tests/qa/test_qap_ms004_adversarial.py (new import block); tests/qa/test_qap_ms004.py import block (currently `:43-52` — nothing it still uses drops out)
+- Narrow tests: tests/qa/test_qap_ms004_adversarial.py (3 tests, not selected by the brief's Verify command — run it explicitly), tests/qa/test_qap_ms004.py (3 remaining)
+
+### U7 · tests/qa/test_qap_ms004.py: split the paired-run gates and the one-client assertion
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | reshape | `test_tc114_one_posture_governs_every_outbound_call`: extract `_run_arm(tmp_path, tag, extra_args)` (peer, proxy, drive every call site, stop, read the report, `assert_single_client`; returns `(report, connector)`) and `_assert_optout_everywhere(result, peer)` and `_assert_refused_everywhere(result, peer, proxy)` | tests/qa/test_qap_ms004.py | tests/qa/test_qap_ms004.py |
+| 2 | reshape | `test_r1_upstream_url_shape_does_not_change_posture`: extract `_run_url_shape_arm(tmp_path, tag, extra_args)` (the same driver with `upstream=peer.url() + hostile_suffix`; returns `(report, connector)`) | tests/qa/test_qap_ms004_adversarial.py | tests/qa/test_qap_ms004_adversarial.py |
+| 3 | reshape | `test_tc003_untrusted_peer_refused_by_default`: extract `_assert_refused_before_the_peer(proxy, peer)` (status, error class, abort witness, empty peer log) | tests/qa/test_qap_ms004.py | tests/qa/test_qap_ms004.py |
+| 4 | reshape | `test_tc113_same_peer_accepted_with_optout`: extract `_assert_optout_reaches_every_site(peer)` (the `{/v1/models, /metrics}` poll, the proxied hit, no aborts) | tests/qa/test_qap_ms004.py | tests/qa/test_qap_ms004.py |
+| 5 | reshape | `assert_single_client` (called by TC-003, TC-113, TC-114, `test_r1_duplicate_flag_occurrence_honored_once`, `test_r1_upstream_url_shape_does_not_change_posture`): extract `_assert_one_connector(report)` and `_assert_one_session(report, connector)`; the public signature and return value stay | tests/qa/qap_ms004_support.py | tests/qa/qap_ms004_support.py |
+- Importers to update: none
+- Witnesses to re-point: none
+- Tests with import lines or patch targets to update: none (helpers stay in the modules that call them)
+- Narrow tests: tests/qa/test_qap_ms004.py, tests/qa/test_qap_ms004_adversarial.py
