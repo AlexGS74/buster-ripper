@@ -38,14 +38,16 @@ import signal
 import pytest
 
 from tests.qa.harness import (
-    Proxy,
     assert_upstream_response,
     log_artifacts,
-    poll_until,
     read_text,
     record_section,
     session_id,
     turn_body,
+)
+from tests.qa.harness_process import (
+    Proxy,
+    poll_until,
 )
 
 COLLAPSED_FORMATS = ("change-focused", "self-contained")
