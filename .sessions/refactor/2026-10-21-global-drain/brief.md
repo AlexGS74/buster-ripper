@@ -126,3 +126,24 @@
 - Findings: none
 - Noticed: both files end 12 and 17 lines above the map's ~586 / ~420 projection (598 / 437 actual) while staying far over 300, so every split unit below still runs.
   Ask: no — the projection is a planning estimate; the files are still over 300 and no downstream unit depends on the exact count.
+
+## U1 Forward
+- Moved: `COLLAPSED_FORMATS`, `TURN_SIZE`, `THRESHOLD_AT_TURN_2`, `UNREACHABLE_BYTES`, `TIMER_OFF_INTERVAL` (with the two-line `~TURN_SIZE` comment above them) -> tests/qa/qap_ms002_support.py
+- Moved: `big_text`, `summary_lines` -> tests/qa/qap_ms002_support.py
+- Reshaped: nothing
+- Files: tests/qa/test_qap_ms002.py, tests/qa/qap_ms002_support.py (new)
+- Tests edited: tests/qa/test_qap_ms002.py: import block only (added `from tests.qa.qap_ms002_support import ...`); `json`, `os`, `re`, `pytest`, `Proxy`, `poll_until` stay and are still used
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts=` -> 15 passed (after row 1); 15 passed (after row 2); `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` (Verify) -> 21 passed
+- Scan: `tests/qa/test_qap_ms002.py` — file 589 lines (ideal <=500); 15 issues in 14 functions: Long Function 4, Medium Length 10, Medium Complexity 1; top: `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2, `test_tc112_timer_resilience` L:44 N:1 C:4 P:1, `test_tc101_session_isolation_near_miss_prompts` L:38 N:0 C:6 P:1, `test_tc105_tc109_write_and_file_counts_paired_runs` L:37 N:1 C:5 P:1, `test_hostile_artifact_symlink_escape_no_write` L:30 N:0 C:1 P:1. `tests/qa/qap_ms002_support.py` — `scan clean` (No refactoring issues found)
+- Sizes: tests/qa/test_qap_ms002.py: 589, tests/qa/qap_ms002_support.py: 23
+- Noticed: the scan's 15 function-level findings are the same set U0 recorded, in code this unit did not touch; U4 carries their reshape rows.
+  Ask: no — U4 already owns those reshapes and this unit changed no function body.
+
+## U1 Yield
+- Verdict: ACCEPT
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` -> 21 passed in 71.68s (Safety net: 21 passed, 0 skipped)
+- Scan: `codify scan path tests/qa/test_qap_ms002.py tests/qa/qap_ms002_support.py` -> `tests/qa/test_qap_ms002.py` 589 lines (ideal <=500), 15 issues in 14 functions: Long Function 4, Medium Length 10, Medium Complexity 1, top `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2, `test_tc112_timer_resilience` L:44 N:1 C:4 P:1, `test_tc101_session_isolation_near_miss_prompts` L:38 N:0 C:6 P:1, `test_tc105_tc109_write_and_file_counts_paired_runs` L:37 N:1 C:5 P:1, `test_hostile_artifact_symlink_escape_no_write` L:30 N:0 C:1 P:1; `tests/qa/qap_ms002_support.py` `scan clean` (No refactoring issues found). Every function and metric matches the Safety net's scan; none added, none worse.
+- Sizes: tests/qa/test_qap_ms002.py: 589, tests/qa/qap_ms002_support.py: 23
+- Findings: none
+- Noticed: `COLLAPSED_FORMATS` is independently re-declared in five other `tests/` dump modules (`test_dump.py`, `test_dump_records.py`, `test_dump_triggers.py`, `test_dump_write_count.py`, `test_dump_flush.py`), a dedup candidate outside this unit's scope.
+  Ask: no — each declaration is self-consistent today and nothing depends on the QA copy.
