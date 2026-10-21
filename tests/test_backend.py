@@ -1,11 +1,4 @@
-"""Tests for backend detection module.
-
-Tests cover:
-- CLI override priority
-- Auto-detection via /v1/models probe
-- Fallback behavior on probe failure
-- Caching behavior
-"""
+"""Tests for backend detection module."""
 
 import asyncio
 
@@ -14,103 +7,19 @@ from aiohttp import web
 import aiohttp
 
 from buster_ripper import backend, config
+from tests.backend_probe import (
+    mock_empty_server,
+    mock_failing_server,
+    mock_sglang_server,
+    mock_unknown_server,
+    mock_vllm_server,
+    reset_backend_state,
+    stalled_backend_server,
+)
 
 
 class TestBackendDetection:
     """Test backend detection logic."""
-
-    @pytest.fixture
-    def reset_backend_state(self):
-        """Reset backend module state before each test."""
-        backend._backend_type = None
-        backend._backend_state_cached = False
-        yield
-        backend._backend_type = None
-        backend._backend_state_cached = False
-
-    @pytest.fixture
-    async def mock_sglang_server(self, aiohttp_server):
-        """Create mock SGLang server."""
-        app = web.Application()
-        app.router.add_get(
-            "/v1/models",
-            lambda req: web.json_response(
-                {"data": [{"id": "test-model", "owned_by": "SGLang"}]}
-            ),
-        )
-        return await aiohttp_server(app)
-
-    @pytest.fixture
-    async def mock_vllm_server(self, aiohttp_server):
-        """Create mock vLLM server."""
-        app = web.Application()
-        app.router.add_get(
-            "/v1/models",
-            lambda req: web.json_response(
-                {"data": [{"id": "test-model", "owned_by": "vLLM"}]}
-            ),
-        )
-        return await aiohttp_server(app)
-
-    @pytest.fixture
-    async def mock_unknown_server(self, aiohttp_server):
-        """Create mock server with unknown backend."""
-        app = web.Application()
-        app.router.add_get(
-            "/v1/models",
-            lambda req: web.json_response(
-                {"data": [{"id": "test-model", "owned_by": "unknown"}]}
-            ),
-        )
-        return await aiohttp_server(app)
-
-    @pytest.fixture
-    async def mock_empty_server(self, aiohttp_server):
-        """Create mock server with empty models list."""
-        app = web.Application()
-        app.router.add_get(
-            "/v1/models", lambda req: web.json_response({"data": []})
-        )
-        return await aiohttp_server(app)
-
-    @pytest.fixture
-    async def mock_failing_server(self, aiohttp_server):
-        """Create mock server that returns error."""
-        app = web.Application()
-        app.router.add_get(
-            "/v1/models", lambda req: web.json_response({"error": "not found"}, status=404)
-        )
-        return await aiohttp_server(app)
-
-    @pytest.fixture
-    async def scripted_probe_server(self, aiohttp_server):
-        """A /v1/models peer answering from a script; the last answer repeats."""
-        script = []
-        calls = []
-
-        async def models(request):
-            status, payload = script[min(len(calls), len(script) - 1)]
-            calls.append(status)
-            return web.json_response(payload, status=status)
-
-        app = web.Application()
-        app.router.add_get("/v1/models", models)
-        return await aiohttp_server(app), script, calls
-
-    @pytest.fixture
-    async def stalled_backend_server(self, aiohttp_server):
-        """A probe peer that accepts GET and never sends a response."""
-        started = asyncio.Event()
-        never_released = asyncio.Event()
-
-        async def stall(request):
-            started.set()
-            await never_released.wait()
-            return web.json_response({"data": []})
-
-        app = web.Application()
-        app.router.add_get("/v1/models", stall)
-        return await aiohttp_server(app), started
 
     @pytest.mark.asyncio
     async def test_cli_override_takes_priority(self, reset_backend_state):
@@ -253,102 +162,6 @@ class TestBackendDetection:
 
         assert backend.get_backend_state() is None
         assert not backend._backend_state_cached
-
-    @pytest.mark.asyncio
-    async def test_retry_classifies_after_transient_startup_failure(
-        self, reset_backend_state, scripted_probe_server, mocker
-    ):
-        """A refusal at startup is retried until the upstream answers SGLang."""
-        server, script, calls = scripted_probe_server
-        script.extend([
-            (503, {"error": "starting"}),
-            (200, {"data": [{"id": "test-model", "owned_by": "SGLang"}]}),
-        ])
-        mocker.patch.object(backend, "_RETRY_INTERVAL", 0.01)
-        async with aiohttp.ClientSession() as session:
-            url = f"http://localhost:{server.port}"
-            assert await backend.detect_backend(session, url) == "unknown"
-            assert not backend.is_backend_state_cached()
-            await asyncio.wait_for(backend._retry_detect_backend(session, url), timeout=2)
-
-        assert backend.get_backend_state() == "sglang"
-        assert backend.is_backend_state_cached()
-        assert calls == [503, 200]
-
-    @pytest.mark.asyncio
-    async def test_definitive_answer_stops_retries(
-        self, reset_backend_state, scripted_probe_server, mocker
-    ):
-        """A definitive vLLM answer caches once and the retry issues no probe."""
-        server, script, calls = scripted_probe_server
-        script.append((200, {"data": [{"id": "test-model", "owned_by": "vLLM"}]}))
-        mocker.patch.object(backend, "_RETRY_INTERVAL", 0)
-        async with aiohttp.ClientSession() as session:
-            url = f"http://localhost:{server.port}"
-            assert await backend.detect_backend(session, url) == "vllm"
-            await asyncio.wait_for(backend._retry_detect_backend(session, url), timeout=1)
-
-        assert backend.is_backend_state_cached()
-        assert calls == [200]
-
-    @pytest.mark.asyncio
-    async def test_empty_models_answer_is_retried_not_cached(
-        self, reset_backend_state, scripted_probe_server, mocker
-    ):
-        """An empty data list is not definitive; the retry classifies later."""
-        server, script, calls = scripted_probe_server
-        script.extend([
-            (200, {"data": []}),
-            (200, {"data": [{"id": "test-model", "owned_by": "vLLM"}]}),
-        ])
-        mocker.patch.object(backend, "_RETRY_INTERVAL", 0.01)
-        async with aiohttp.ClientSession() as session:
-            url = f"http://localhost:{server.port}"
-            assert await backend.detect_backend(session, url) == "unknown"
-            assert not backend.is_backend_state_cached()
-            await asyncio.wait_for(backend._retry_detect_backend(session, url), timeout=2)
-
-        assert backend.get_backend_state() == "vllm"
-        assert calls == [200, 200]
-
-    @pytest.mark.asyncio
-    async def test_cli_override_issues_no_probe_or_retry(
-        self, reset_backend_state, mocker
-    ):
-        """The CLI override wins and leaves nothing for a retry to probe."""
-        session = mocker.Mock()
-
-        result = await backend.detect_backend(session, "http://unused", "sglang")
-        await backend._retry_detect_backend(session, "http://unused")
-
-        assert result == "sglang"
-        assert backend.is_backend_state_cached()
-        session.get.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_stalled_retry_never_blocks_a_state_read(
-        self, reset_backend_state, stalled_backend_server, mocker
-    ):
-        """A hanging re-probe is background-only; cancelling it caches nothing."""
-        server, started = stalled_backend_server
-        mocker.patch.object(backend, "_RETRY_INTERVAL", 0)
-        async with aiohttp.ClientSession() as session:
-            task = asyncio.create_task(
-                backend._retry_detect_backend(session, f"http://localhost:{server.port}")
-            )
-            await asyncio.wait_for(started.wait(), timeout=2)
-            loop = asyncio.get_running_loop()
-            before = loop.time()
-            state = backend.get_backend_state()
-            elapsed = loop.time() - before
-            task.cancel()
-            with pytest.raises(asyncio.CancelledError):
-                await task
-
-        assert state is None
-        assert elapsed < 0.5
-        assert backend.get_backend_state() is None
-        assert not backend.is_backend_state_cached()
 
     @pytest.mark.asyncio
     async def test_caching_prevents_duplicate_probes(self, reset_backend_state, mock_sglang_server):
