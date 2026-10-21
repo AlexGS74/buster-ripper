@@ -106,3 +106,23 @@
 - Witnesses to re-point: none
 - Tests with import lines or patch targets to update: none (helpers stay in the modules that call them)
 - Narrow tests: tests/qa/test_qap_ms004.py, tests/qa/test_qap_ms004_adversarial.py
+
+## U0 Forward
+- Moved: nothing
+- Reshaped: nothing
+- Files: tests/qa/test_qap_ms002.py, tests/qa/test_qap_ms004.py
+- Tests edited: none
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` -> 21 passed (after row 1); 21 passed (after row 2); 21 passed (Verify)
+- Scan: `tests/qa/test_qap_ms002.py` — file 598 lines (ideal <=500); 15 issues in 14 functions: Long Function 4, Medium Length 10, Medium Complexity 1; top: `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2, `test_tc112_timer_resilience` L:44 N:1 C:4 P:1, `test_tc101_session_isolation_near_miss_prompts` L:38 N:0 C:6 P:1, `test_tc105_tc109_write_and_file_counts_paired_runs` L:37 N:1 C:5 P:1, `test_hostile_artifact_symlink_escape_no_write` L:30 N:0 C:1 P:1. `tests/qa/test_qap_ms004.py` — file 437 lines (review <=300); noise decomposition 30 trimmable full-line comments; 7 issues in 7 functions: Long Function 4, Medium Length 3; top: `test_tc114_one_posture_governs_every_outbound_call` L:71 N:1 C:4 P:1, `test_r1_upstream_url_shape_does_not_change_posture` L:45 N:0 C:2 P:1, `test_tc003_untrusted_peer_refused_by_default` L:36 N:0 C:2 P:1, `test_tc113_same_peer_accepted_with_optout` L:34 N:0 C:1 P:1, `test_r1_duplicate_flag_occurrence_honored_once` L:21 N:0 C:2 P:1
+- Sizes: tests/qa/test_qap_ms002.py: 598, tests/qa/test_qap_ms004.py: 437
+- Noticed: the scan's function-level findings are pre-existing debt in code this unit only re-commented; U4/U7 carry the reshape rows for them.
+  Ask: no — U4/U7 already own those reshapes.
+
+## U0 Yield
+- Verdict: ACCEPT
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` -> 21 passed in 75.59s (Safety net: 21 passed, 0 skipped)
+- Scan: `codify scan path tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py` -> `tests/qa/test_qap_ms002.py` 598 lines (ideal <=500), 15 issues in 14 functions: Long Function 4, Medium Length 10, Medium Complexity 1, top `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2; `tests/qa/test_qap_ms004.py` 437 lines (review <=300), noise decomposition 30 trimmable full-line comments, 7 issues in 7 functions: Long Function 4, Medium Length 3, top `test_tc114_one_posture_governs_every_outbound_call` L:71 N:1 C:4 P:1. Every function and metric matches the Safety net's scan; none added, none worse.
+- Sizes: tests/qa/test_qap_ms002.py: 598, tests/qa/test_qap_ms004.py: 437
+- Findings: none
+- Noticed: both files end 12 and 17 lines above the map's ~586 / ~420 projection (598 / 437 actual) while staying far over 300, so every split unit below still runs.
+  Ask: no — the projection is a planning estimate; the files are still over 300 and no downstream unit depends on the exact count.

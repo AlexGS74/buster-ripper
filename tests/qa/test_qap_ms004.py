@@ -1,43 +1,22 @@
 """QAP-MS004 — MS-004 integration gates: the upstream-TLS verification opt-out.
 
-Covers (qa-plan.md §QA Gate Matrix / §Scenario Contracts, the
-``TC-003 / TC-113 / TC-114`` group):
+Covers (qa-plan.md §QA Gate Matrix + §Scenario Contracts): TC-003
+VP-T006-verify-on-by-default and W1 (the untrusted peer refused with a
+certificate-verification error), TC-113 VP-T006-optout-honored (the same peer and
+request with ``--skip-tls-verify``), TC-114 VP-T006-posture-is-process-wide (one
+connector, one posture, for the proxied request, the ``/v1/models`` probe and the
+``/metrics`` poll) and W2 (both postures behaving identically); the adversarial
+tier adds the R5 trust-identity near-miss pair and the R1 flag-repeat and
+upstream-URL-shape boundaries. R2 and R4 have no surface in this milestone.
 
-- TC-003  VP-T006-verify-on-by-default   — the untrusted peer is refused, and the
-  refusal is a certificate-verification error. Forbidden witness **W1**: a
-  self-signed peer accepted with no opt-out.
-- TC-113  VP-T006-optout-honored         — the same peer, the same request, with
-  ``--skip-tls-verify``, completes.
-- TC-114  VP-T006-posture-is-process-wide — one connector, one posture, for the
-  proxied request **and** the ``/v1/models`` probe and the ``/metrics`` poll.
-  Forbidden witness **W2**: the flag accepted, the global set, but both postures
-  behaving identically.
-- Adversarial tier (codify-adversarial-surface-discipline): the trust-identity
-  near-miss pair (R5 — same material, two client trust postures), a duplicate
-  occurrence of the new flag and an upstream-URL shape variant (R1 — the parse
-  boundaries this milestone adds). ``R2`` (writer into a pre-existing tree) and
-  ``R4`` (payload decoder census) have no surface in this milestone; the reason
-  is recorded in the iteration report, not silently skipped.
+Harness (``qa-project`` §Upstream + §Capability Declarations): this gate starts its
+own loopback self-signed HTTPS peer with ``require_live_upstream=False`` and asserts
+every outbound call went to it; readiness is a port poll inside ``Proxy``, settling
+is bounded polling of the peer's request log and quiescence is process exit — no
+fixed sleeps, no telemetry.
 
-Harness notes:
-
-- This is the ONE gate the ``qa-project`` §Upstream amendment exempts from the
-  live remote upstream: it starts its own loopback self-signed HTTPS peer
-  (:mod:`tests.qa.tls_peer`, committed certificate material) and passes
-  ``require_live_upstream=False``, so ``hyperipper.local`` reachability is not a
-  precondition here. The gate additionally asserts that every outbound call the
-  proxy made went to the peer — the amendment's "the remote upstream is not used
-  by this gate" clause, checked rather than assumed.
-- Synchronization is the declared contract only: readiness by port poll (inside
-  ``Proxy``), settling by bounded polling of an application-side observable (the
-  peer's request log), quiescence by waiting for process exit before reading the
-  instrumented report. No fixed sleeps.
-- No telemetry is asserted: the project declares no telemetry-verification
-  capability and ``FK-008`` option 1 ships no runtime posture record.
-
-Run explicitly (NOT part of the hermetic default suite)::
-
-    .venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts=
+Run explicitly (not in the hermetic default suite):
+``.venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts=``.
 """
 
 from __future__ import annotations
@@ -51,9 +30,7 @@ from tests.qa.harness import turn_body
 from tests.qa.harness_process import Proxy, poll_until
 from tests.qa.tls_peer import MARKER, TlsPeer
 
-#: The peer is probed at process start; this bound is generous, and the paired
-#: no-opt-out run in TC-114 uses the identical bound so its absence claim is
-#: witnessed by the run that does observe them (non-vacuous by construction).
+#: Generous peer-probe bound; TC-114's paired no-opt-out run shares it, so absence is non-vacuous.
 PATH_DEADLINE = 20.0
 
 CERT_MARKER = "CERTIFICATE_VERIFY_FAILED"
@@ -66,9 +43,7 @@ PROXIED = "/v1/messages"
 OUTBOUND_PATHS = {MODEL_PROBE, METRICS_POLL, PROXIED}
 
 
-# ---------------------------------------------------------------------------
 # helpers
-# ---------------------------------------------------------------------------
 
 def start_peer() -> TlsPeer:
     peer = TlsPeer().start()
@@ -160,9 +135,7 @@ def messages_body(system: str, text: str) -> dict:
     return turn_body(system, text)
 
 
-# ---------------------------------------------------------------------------
 # TC-003 — VP-T006-verify-on-by-default
-# ---------------------------------------------------------------------------
 
 def test_tc003_untrusted_peer_refused_by_default(tmp_path):
     """No opt-out: the untrusted-certificate HTTPS upstream is not reached, and
@@ -210,9 +183,7 @@ def test_tc003_untrusted_peer_refused_by_default(tmp_path):
     assert_clean_shutdown(proxy, rc)
 
 
-# ---------------------------------------------------------------------------
 # TC-113 — VP-T006-optout-honored
-# ---------------------------------------------------------------------------
 
 def test_tc113_same_peer_accepted_with_optout(tmp_path):
     """With the opt-out, the same peer and the same request complete."""
@@ -252,9 +223,7 @@ def test_tc113_same_peer_accepted_with_optout(tmp_path):
     assert_clean_shutdown(proxy, rc)
 
 
-# ---------------------------------------------------------------------------
 # TC-114 — VP-T006-posture-is-process-wide (paired runs, one peer shape)
-# ---------------------------------------------------------------------------
 
 def _drive_all_call_sites(proxy: Proxy, peer: TlsPeer, system: str) -> dict:
     """The startup-driven probe + poll, then one proxied turn; settle on the peer."""
@@ -274,13 +243,10 @@ def _drive_all_call_sites(proxy: Proxy, peer: TlsPeer, system: str) -> dict:
 
 
 def test_tc114_one_posture_governs_every_outbound_call(tmp_path):
-    """One opt-out, one connector: the ``/metrics`` poll and the ``/v1/models``
-    probe carry the same posture as the proxied request.
+    """One opt-out, one connector: every call site carries the same posture.
 
-    Run A (opt-out) is the positive control that proves all three call sites are
-    observable at the peer inside ``PATH_DEADLINE``; run B (default) uses the
-    identical bound, so "the peer saw nothing on any path" is a refusal by every
-    call site and not a too-short wait.
+    Run A proves all three are observable at the peer inside ``PATH_DEADLINE``; run
+    B shares that bound, so "the peer saw nothing" is a refusal, not a short wait.
     """
     # --- run A: opt-out, every call site completes -------------------------
     peer_a = start_peer()
@@ -360,17 +326,11 @@ def test_tc114_one_posture_governs_every_outbound_call(tmp_path):
         )
 
 
-# ---------------------------------------------------------------------------
 # Adversarial tier
-# ---------------------------------------------------------------------------
 
 def test_r5_trust_identity_pair_is_not_merged(tmp_path):
-    """Same peer, same port, same certificate bytes: the only variable is the
-    client's trust decision, and the two outcomes must be observably different.
-
-    This is the sensitivity check for TC-003 — it fails if a "refusal" is really
-    a broken peer (both postures fail) and if a "success" is really an anonymous
-    accept (both postures pass).
+    """TC-003's sensitivity check: same peer, port and certificate bytes, only the
+    client's trust decision differs — a broken peer or an anonymous accept fails here.
     """
     peer = TlsPeer().start()
     try:

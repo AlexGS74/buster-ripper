@@ -1,31 +1,20 @@
 """QAP-MS002 — MS-002 integration gates: the collapsed path becomes observable.
 
-Covers (qa-plan.md §QA Gate Matrix / §Scenario Contracts):
+Covers (qa-plan.md §QA Gate Matrix + §QA Author Passes) the TC↔VP map: TC-101
+VP-T001-session-isolation (+ R5 sid near-miss), TC-102 VP-T002-collapsed-artifact
+(+ R5 (sid, format) near-miss), TC-103 VP-T002-change-readable, TC-104
+VP-T002-turn0-available, TC-105 VP-T002-write-count-reduced (G-008(b)), TC-106
+VP-T002-volume-flush, TC-109 VP-T002-file-count-reduced, TC-110
+VP-T003-shutdown-flush (SIGINT/SIGTERM), TC-111 VP-T003-interval-flush, TC-112
+VP-T003-timer-resilience; the hostile tier (R1/R2) maps to
+VP-T002-collapsed-artifact and VP-T002-volume-flush.
 
-- TC-101 VP-T001-session-isolation  (+ R5 sid near-miss pair)
-- TC-102 VP-T002-collapsed-artifact (+ R5 (sid, format) near-miss pair)
-- TC-103 VP-T002-change-readable
-- TC-104 VP-T002-turn0-available
-- TC-105 VP-T002-write-count-reduced (paired runs per collapsed format + the
-  documented half the scenario completes here; G-008(b) measurement)
-- TC-106 VP-T002-volume-flush
-- TC-109 VP-T002-file-count-reduced
-- TC-110 VP-T003-shutdown-flush (SIGINT and SIGTERM, separate runs)
-- TC-111 VP-T003-interval-flush
-- TC-112 VP-T003-timer-resilience
-- Hostile tier (codify-adversarial-surface-discipline R1/R2): non-UTF-8 and
-  empty bodies, duplicate JSON keys, trailing newline, dangling-session-dir
-  symlink, artifact-symlink escape — mapped to VP-T002-collapsed-artifact
-  (parse boundary / record path) and VP-T002-volume-flush (flush writer into a
-  pre-existing DUMP_DIR tree).
+Run explicitly (not in the hermetic default suite):
+``.venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts=``.
 
-Run explicitly (NOT part of the hermetic default suite)::
-
-    .venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts=
-
-Environment note: the declared real upstream is required. Gates fail closed
-if it is unavailable and assert on dump artifacts and process behavior, never
-on model output. A proxy-local upstream-connection 502 is not a passing baseline.
+The declared live upstream is required: gates fail closed without it and assert on
+dump artifacts and process behaviour, never model output (a proxy-local 502 is not a
+baseline).
 """
 
 from __future__ import annotations
@@ -52,10 +41,8 @@ from tests.qa.harness_process import (
 
 COLLAPSED_FORMATS = ("change-focused", "self-contained")
 
-# Per-turn rendered size ~= TURN_SIZE + small system/section overhead; the
-# thresholds below are chosen so that 2 pending turns stay below and 3 turns
-# cross, with ~20 KB of margin on each side (rendered bytes are dominated by
-# the user-message content, which the gate controls).
+# ~TURN_SIZE per turn plus small overhead: 2 pending turns stay below these
+# thresholds and 3 cross, with ~20 KB margin on each side.
 TURN_SIZE = 40_000
 THRESHOLD_AT_TURN_2 = 100_000
 UNREACHABLE_BYTES = 10 ** 12
@@ -71,9 +58,7 @@ def summary_lines(artifact_text: str) -> list[str]:
     return re.findall(r"(?m)^turn \d{3}\b.*$", artifact_text)
 
 
-# ---------------------------------------------------------------------------
 # TC-101 — VP-T001-session-isolation (+ R5: 1-char near-miss system prompts)
-# ---------------------------------------------------------------------------
 
 def test_tc101_session_isolation_near_miss_prompts(tmp_path):
     dump = tmp_path / "dump"
@@ -119,9 +104,7 @@ def test_tc101_session_isolation_near_miss_prompts(tmp_path):
     assert "sentinel-two" in t2 and "sentinel-one" not in t2
 
 
-# ---------------------------------------------------------------------------
 # TC-102 / TC-103 / TC-104 — artifact shape, readability, turn 0 (per format)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("fmt", COLLAPSED_FORMATS)
 def test_tc102_103_104_collapsed_artifact_shape_readability_turn0(tmp_path, fmt):
@@ -186,9 +169,7 @@ def test_tc102_103_104_collapsed_artifact_shape_readability_turn0(tmp_path, fmt)
     assert "[message 0 / user]" in rendered_block
 
 
-# ---------------------------------------------------------------------------
 # Identity near-miss (R5): the (sid, format) key must not merge formats
-# ---------------------------------------------------------------------------
 
 def test_identity_sid_format_near_miss_two_artifacts(tmp_path):
     system = "qa-ms002-identity-same-prompt"
@@ -227,9 +208,7 @@ def test_identity_sid_format_near_miss_two_artifacts(tmp_path):
     assert "sentinel-dos" in sc_text and "sentinel-uno" not in sc_text
 
 
-# ---------------------------------------------------------------------------
 # TC-105 / TC-109 — paired instrumented runs (the G-008(b) measurement)
-# ---------------------------------------------------------------------------
 
 N_TURNS = 6  # F=2: flush after turn 2 and after turn 5
 
@@ -307,9 +286,7 @@ def test_tc105_tc109_write_and_file_counts_paired_runs(tmp_path):
     assert not log_artifacts(str(tmp_path / "dump-documented"))
 
 
-# ---------------------------------------------------------------------------
 # TC-106 — VP-T002-volume-flush
-# ---------------------------------------------------------------------------
 
 def test_tc106_volume_flush(tmp_path):
     system = "qa-ms002-volume"
@@ -340,9 +317,7 @@ def test_tc106_volume_flush(tmp_path):
     assert ids == [0, 1, 2], "the threshold flush carries exactly turns 0..2"
 
 
-# ---------------------------------------------------------------------------
 # TC-110 — VP-T003-shutdown-flush (real SIGINT and SIGTERM)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("sig", [signal.SIGINT, signal.SIGTERM], ids=["sigint", "sigterm"])
 def test_tc110_shutdown_flush(tmp_path, sig):
@@ -376,9 +351,7 @@ def test_tc110_shutdown_flush(tmp_path, sig):
     assert ids == [0, 1, 2], "buffered turns must be on disk, in order, after the signal"
 
 
-# ---------------------------------------------------------------------------
 # TC-111 — VP-T003-interval-flush
-# ---------------------------------------------------------------------------
 
 def test_tc111_interval_flush(tmp_path):
     system = "qa-ms002-interval"
@@ -410,9 +383,7 @@ def test_tc111_interval_flush(tmp_path):
     assert rc == 0
 
 
-# ---------------------------------------------------------------------------
 # TC-112 — VP-T003-timer-resilience
-# ---------------------------------------------------------------------------
 
 def test_tc112_timer_resilience(tmp_path):
     system = "qa-ms002-resilience"
@@ -461,18 +432,13 @@ def test_tc112_timer_resilience(tmp_path):
         assert proxy.proc.poll() is None, "process healthy throughout"
     finally:
         rc = proxy.stop()
-    # Clean-exit discriminator: the cancellation and the wrapped final flush
-    # must not raise out of on_cleanup (a fatal traceback would exit non-zero).
-    # The injected PermissionError itself IS logged — with traceback
-    # formatting — which the scenario contract expects ("the raise is logged").
+    # Clean exit: the injected PermissionError is logged but must not raise out of on_cleanup.
     assert rc == 0
     ids = [int(line.split()[1]) for line in summary_lines(read_text(artifact))]
     assert ids == [0, 1, 2]
 
 
-# ---------------------------------------------------------------------------
 # Hostile tier — R1 (parse boundary) -> VP-T002-collapsed-artifact
-# ---------------------------------------------------------------------------
 
 def test_hostile_non_utf8_and_empty_body_no_write(tmp_path):
     system = "qa-ms002-hostile-parse-health"
@@ -559,9 +525,7 @@ def test_hostile_trailing_newline_body_is_valid(tmp_path):
     assert "sentinel-tn" in read_text(proxy.artifact_path(system, "change-focused"))
 
 
-# ---------------------------------------------------------------------------
 # Hostile tier — R2 (writer into pre-existing trees) -> VP-T002-volume-flush
-# ---------------------------------------------------------------------------
 
 def test_hostile_dangling_session_dir_symlink_no_write(tmp_path):
     system = "qa-ms002-hostile-dangling"
