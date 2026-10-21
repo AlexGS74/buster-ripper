@@ -105,7 +105,7 @@ behavior is gated above.
   directive stands); `TC-100` bounds its pre-flush window by observation instead. Shares
   `tests/qa/harness.py`, extended by this pass: `read_text` / `log_artifacts` /
   `assert_upstream_response` promoted out of `test_qap_ms002.py`, and `startup_refused()` added.
-  Selected explicitly via `.venv/bin/python -m pytest tests/qa/test_qap_ms001.py -o addopts=`. The
+  Selected explicitly via `.venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms001_witnesses.py tests/qa/test_qap_ms001_tiers.py -o addopts=`. The
   documented half of the `G-008`(b) pair is measurable here too (`write_ops = 2N`, `files = N + 1`).
   `ready` is not a verdict: Yield Phase re-runs and writes the authoritative `pass`/`fail` on the
   four `VP-*` points.
