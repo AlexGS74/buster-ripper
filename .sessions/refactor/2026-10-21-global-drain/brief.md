@@ -147,3 +147,31 @@
 - Findings: none
 - Noticed: `COLLAPSED_FORMATS` is independently re-declared in five other `tests/` dump modules (`test_dump.py`, `test_dump_records.py`, `test_dump_triggers.py`, `test_dump_write_count.py`, `test_dump_flush.py`), a dedup candidate outside this unit's scope.
   Ask: no — each declaration is self-consistent today and nothing depends on the QA copy.
+
+## U2 Forward
+- Moved: `test_hostile_non_utf8_and_empty_body_no_write`, `test_hostile_duplicate_json_keys_last_wins_single_record`, `test_hostile_trailing_newline_body_is_valid`, `test_hostile_dangling_session_dir_symlink_no_write`, `test_hostile_artifact_symlink_escape_no_write` (with their two section banners, byte-identical) -> tests/qa/test_qap_ms002_hostile.py
+- Reshaped: nothing
+- Files: tests/qa/test_qap_ms002_hostile.py (new), tests/qa/test_qap_ms002.py, .sessions/codify/02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/qa-plan.md
+- Tests edited: tests/qa/test_qap_ms002_hostile.py: new import block only; tests/qa/test_qap_ms002.py import block unchanged (still uses every name it imports)
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002_hostile.py tests/qa/test_qap_ms002.py -o addopts=` -> 15 passed (5 hostile + 10 remaining); `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` (Verify) -> 16 passed
+- Scan: `tests/qa/test_qap_ms002.py` — file 429 lines (review <=300), noise decomposition 32 trimmable full-line comments; 10 issues in 9 functions: Long Function 4, Medium Complexity 1, Medium Length 5; top: `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2, `test_tc112_timer_resilience` L:44 N:1 C:4 P:1, `test_tc101_session_isolation_near_miss_prompts` L:38 N:0 C:6 P:1, `test_tc105_tc109_write_and_file_counts_paired_runs` L:37 N:1 C:5 P:1, `test_identity_sid_format_near_miss_two_artifacts` L:29 N:0 C:2 P:1. `tests/qa/test_qap_ms002_hostile.py` — file 179 lines (no file-size finding); 5 issues in 5 functions: Medium Length 5; top: `test_hostile_artifact_symlink_escape_no_write` L:30 N:0 C:1 P:1, `test_hostile_dangling_session_dir_symlink_no_write` L:27 N:0 C:1 P:1, `test_hostile_duplicate_json_keys_last_wins_single_record` L:26 N:0 C:1 P:1, `test_hostile_non_utf8_and_empty_body_no_write` L:25 N:0 C:1 P:1, `test_hostile_trailing_newline_body_is_valid` L:19 N:0 C:1 P:1
+- Sizes: tests/qa/test_qap_ms002.py: 429, tests/qa/test_qap_ms002_hostile.py: 179
+- Noticed: the 5 Medium Length findings in the new hostile module are the same functions the Safety net scan reported inside test_qap_ms002.py, moved verbatim; the map has no reshape row for the hostile tier.
+  Ask: no — they are pre-existing debt that this unit only relocated, and U4/U7 do not name them.
+- Noticed: `tests/qa/test_qap_ms002.py`'s module docstring still says it covers "the hostile tier (R1/R2)", which now lives in the new module; no map row authorizes a docstring edit here.
+  Ask: no — a stale docstring misleads no runtime path and breaks nothing.
+- Noticed: `codify knowledge sync-registry --apply` reported `already-current` and two pre-existing `curated-index-generated-section` errors in `invariants/index.md:24` and `:43`; it wrote no file.
+  Ask: no — the registry paths are unchanged by this unit and the errors predate it.
+
+## U2 Yield
+- Verdict: ACCEPT
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` -> 16 passed in 66.63s (the 5 moved hostile tests are no longer collected by this command, as the map row says); `.venv/bin/python -m pytest tests/qa/test_qap_ms002_hostile.py -o addopts=` -> 5 passed in 3.31s (21 of 21 tests green across the three modules, equal to the Safety net's 21 passed, 0 skipped)
+- Scan: `codify scan path tests/qa/test_qap_ms002.py tests/qa/test_qap_ms002_hostile.py` -> `tests/qa/test_qap_ms002.py` 429 lines (review <=300), noise decomposition 32 trimmable full-line comments, 10 issues in 9 functions: Long Function 4, Medium Complexity 1, Medium Length 5, top `test_tc102_103_104_collapsed_artifact_shape_readability_turn0` L:46 N:1 C:5 P:2; `tests/qa/test_qap_ms002_hostile.py` 179 lines (no file-size finding), 5 issues in 5 functions: Medium Length 5, top `test_hostile_artifact_symlink_escape_no_write` L:30 N:0 C:1 P:1. Together 15 issues in 14 functions, the same set the Safety net printed; every function and metric matches, none added, none worse.
+- Sizes: tests/qa/test_qap_ms002.py: 429, tests/qa/test_qap_ms002_hostile.py: 179
+- Findings: none
+- Noticed: the moved block is byte-identical to the removed one (banner included); the new file adds only its one-line docstring, `from __future__`, and the import block the map row lists, and every remaining import in `tests/qa/test_qap_ms002.py` is still used.
+  Ask: no — the only diff line is the module separator blank line.
+- Noticed: `tests/qa/test_qap_ms002.py`'s module docstring still claims "the hostile tier (R1/R2)" and its run line still names only the old path, while the authoritative `qa-plan.md:77,80` now names both modules.
+  Ask: no — a stale docstring changes no test collection and misleads nobody who follows the updated qa-plan; the map authorizes no docstring edit in this unit.
+- Noticed: `codify knowledge sync-registry` preview reports `current` (no pending sync); `codify knowledge check --profile strict` reports 5 diagnostics, all pre-existing at HEAD in files this unit never touched: `missing-version` in `buster_ripper/dump/invariants.md:1`, `buster_ripper/server/invariants.md:1` and `index.md:1`, plus the two `curated-index-generated-section` errors in `invariants/index.md:24` and `:43`.
+  Ask: no — `invariants/` is unchanged by this unit (`git status` clean there) and every diagnostic exists at HEAD; the re-pointed witness is a session `qa-plan.md`, which the registry does not track.

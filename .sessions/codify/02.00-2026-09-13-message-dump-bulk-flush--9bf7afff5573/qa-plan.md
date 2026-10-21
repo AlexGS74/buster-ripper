@@ -74,10 +74,10 @@ behavior is gated above.
 ## Authored Gate Tests
 
 - **QAP-MS002** — authored ([034-forward-qa](iterations/034-forward-qa.md)), **ready** for the MS-002
-  Yield Phase. Tests: `tests/qa/test_qap_ms002.py` (TC-101…TC-112 + R1/R2 hostile tier + R5 identity
+  Yield Phase. Tests: `tests/qa/test_qap_ms002.py` + `tests/qa/test_qap_ms002_hostile.py` (TC-101…TC-112 + R1/R2 hostile tier + R5 identity
   near-misses), shared harness `tests/qa/harness.py`, instrumented write-count entry
   `tests/qa/counted_proxy_entry.py`. Selected explicitly via
-  `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts=` (excluded from the hermetic
+  `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms002_hostile.py -o addopts=` (excluded from the hermetic
   default run by `norecursedirs`). The paired M1/M2 comparison numbers for the Yield Phase's
   `G-008`(b) comparison record are in the iteration report §Harness Execution. Yield Phase re-runs and
   writes the authoritative verdicts. [048-forward-qa](iterations/048-forward-qa.md) repairs the
