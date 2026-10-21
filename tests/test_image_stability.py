@@ -1,18 +1,12 @@
 """Tests for placeholder identity and cache retention — the two stability contracts.
 
-Sibling of `tests/test_image.py`, which carries the scope contract. Two things a
-forwarded request depends on that the module did not previously give it:
-
-* **Identity** (`057` F-2, `063 R-A`) — a placeholder key is a deterministic function of
-  one image `source`, so the same source carries the same marker text on every request
-  that carries it. That byte stability in the forwarded body is the marker's whole
-  contract; the cached source has no production reader and nothing restores an image
-  from its placeholder (`DC-S13-GAP-r1`).
-* **Retention** (`057` F-3, `063 R-B`/`R-C`, `DC-CE-2-r1`…`DC-CE-5-r1`) — both advertised
-  bounds, TTL and size, bind on the write path; retention is absolute age; an emptied
-  session is reclaimed; and every stamp comes from a non-decreasing clock.
-
-Every case names its own starting state, because the reset is per test and not per call
+Sibling of `tests/test_image.py`, which carries the scope contract. **Identity** (`057` F-2,
+`063` R-A): a placeholder key is a deterministic function of one image `source`, so the same
+source carries the same marker text on every request; that byte stability is the marker's whole
+contract, and nothing restores an image from its placeholder (`DC-S13-GAP-r1`). **Retention**
+(`057` F-3, `063` R-B/`R-C`, `DC-CE-2-r1`…`DC-CE-5-r1`): both advertised bounds bind on
+the write path, retention is absolute age, an emptied session is reclaimed, and every stamp comes
+from a non-decreasing clock. Every case names its own starting state
 (`DC-claim-289-r1`), and no witness sleeps on a clock.
 """
 
@@ -35,9 +29,7 @@ from tests.image_bodies import (
 )
 
 # `063 R-A`'s formula pinned on bytes: the slice comes off the digest of the canonical
-# serialization, never off the serialization itself. Realistic base64 sources share their
-# first characters, so slicing the operand would hand every image in a session the same
-# key — the collision this member exists to remove.
+# serialization, never off the serialization itself, so sources sharing a prefix cannot collide.
 _PIN_SOURCE = {"url": "data:image/png;base64,abc"}
 _PIN_KEY = "img_04b45e9ae5ea"
 
@@ -80,15 +72,10 @@ class TestPlaceholderIdentity:
         assert placeholders(left) == placeholders(right)
 
     def test_the_other_call_site_sees_the_same_key_through_a_cache_control(self, mocker):
-        """The referent discriminator: `normalize`'s step 0 strips while `cache_control` is still on the block.
-
-        `normalize.py:212` runs the image step before `_normalize_cache_control` at `:223`,
-        while `routes/messages.py:34` has already deleted it by the time that site's `:38`
-        guard opens. A key over the whole block would therefore differ per call site for
-        one unchanged image — F-2's defect class, relocated. The step at `:212` is
-        unreachable from production (`normalize` is only ever called with an empty
-        `session_id`), which is why this is authored as the direct unit call it has to be
-        and not as an integration path (`DC-S13-CE4-r1`).
+        """The referent discriminator: `normalize`'s step 0 strips while `cache_control` is
+        still on the block. A key over the whole block would differ per call site for one
+        unchanged image — F-2's defect class, relocated. That step is unreachable from
+        production, so this is the direct unit call it has to be (`DC-S13-CE4-r1`).
         """
         mocker.patch.object(config, "STRIP_IMAGES", True)
         at_normalize = body(user([{"type": "image", "source": {"url": "data:1"},
@@ -121,13 +108,9 @@ class TestPlaceholderIdentity:
         assert len(image._image_cache["session-1"]) == 1
 
     def test_two_sources_in_one_message_at_the_cap_do_not_overwrite(self, mocker):
-        """The converse of the row above: distinct sources at the cap get distinct keys and evict.
-
-        Pre-state built here, not inherited: this session's map holds exactly
-        `IMAGE_CACHE_MAX_SIZE` entries from two earlier writes. Under the count-derived key
-        both blocks recomputed `img_2`, the second replaced the first, and both forwarded
-        one byte-identical token for two different client images while the first block's
-        source was referenced by nothing (`DC-S13-CE1-r1`).
+        """The converse of the row above: distinct sources at the cap get distinct keys and
+        evict. Pre-state is two earlier writes filling the cap; the count-derived key made both
+        blocks `img_2`, so the second replaced the first (`DC-S13-CE1-r1`).
         """
         mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
         reset_cache()
@@ -152,11 +135,8 @@ class TestPlaceholderIdentity:
         assert placeholders(in_a) == placeholders(in_b)
 
     def test_source_less_blocks_share_the_empty_source_key(self):
-        """No special case for a block with no `source`: `{}` is one source, so one key.
-
-        `:80`'s `.get("source", {})` default means every source-less block hashes the empty
-        mapping, and under content addressing that shared key is the correct reading of one
-        source, one placeholder — not a collision to fix (`DC-S13-CE1-r1`).
+        """No special case for a block with no `source`: `{}` is one source, so one key, not
+        a collision to fix (`DC-S13-CE1-r1`).
         """
         first, second = one_image({}), one_image({})
 
@@ -166,13 +146,10 @@ class TestPlaceholderIdentity:
         assert len(set(placeholders(first) + placeholders(second))) == 1
 
     def test_eviction_keeps_running_and_never_reuses_a_live_key(self, mocker):
-        """Eviction liveness: the bound is enforced on every insert, and no key lands on a live entry.
-
-        Pre-state: an empty cache, then eight distinct sources through one session — the
-        101st-image shape at the default bound, at 3 for the cost of the loop. Under the
-        count-derived key the fourth image hit the live `img_3`, the replace kept its
-        position, the size never exceeded the bound again, and nothing was ever evicted
-        again (`DC-CE-5-r1`).
+        """Eviction liveness: the bound holds on every insert, and no key lands on a live
+        entry. Pre-state is empty, then eight distinct sources through one session; under the
+        count-derived key the fourth image hit the live `img_3` and eviction stopped
+        (`DC-CE-5-r1`).
         """
         mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 3)
         mocker.patch.object(config, "IMAGE_CACHE_TTL", 10_000)
@@ -207,10 +184,8 @@ class TestWritePathReclamation:
         assert sources("A") == [{"url": "new"}]
 
     def test_w2_abandoned_session_is_dropped(self, mocker):
-        """Another session's write reclaims an abandoned session's dict entirely.
-
-        The global axis, and the witness that the outer-key drop is new code inside the
-        janitor rather than a new call to it (`DC-CE-3-r1`).
+        """The global axis: another session's write reclaims an abandoned session's dict
+        entirely, inside the janitor rather than by a new call to it (`DC-CE-3-r1`).
         """
         mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
         clock = stamp_source(mocker)
@@ -224,10 +199,8 @@ class TestWritePathReclamation:
         assert "B" in image._image_cache
 
     def test_w3_a_write_after_its_session_aged_out_does_not_raise(self, mocker):
-        """What the positional prohibition prevents: no delete between the ensure and the write.
-
-        A drop placed there would surface to the client as an HTTP 500, because neither
-        guarded call site has a `try` and the one middleware does not catch.
+        """What the positional prohibition prevents: no delete between the ensure and the
+        write, where a drop would reach the client as an HTTP 500.
         """
         mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
         clock = stamp_source(mocker)
@@ -254,11 +227,9 @@ class TestWritePathReclamation:
         assert "A" in image._image_cache
 
     def test_w5_a_write_onto_an_aged_entry_carries_its_age_forward(self, mocker):
-        """A re-send past the TTL is not a fresh entry, and this call's own sweep drops it.
-
-        Pre-state: one entry, aged out with no sweep in between. A build that re-created
-        the stamp on a same-key write passes W1-W4 and fails here, because that sweep would
-        find an age-zero entry (`DC-CE-5-r1`).
+        """A re-send past the TTL is not a fresh entry, and this call's own sweep drops
+        it: a build that re-created the stamp on a same-key write passes W1-W4 and fails
+        here (`DC-CE-5-r1`).
         """
         mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
         clock = stamp_source(mocker)
@@ -291,23 +262,15 @@ class TestWritePathReclamation:
         assert ids("A") == {"X", "Z"}, "the touched entry was evicted on its age, not its recency"
 
     def test_the_stamp_source_is_a_non_decreasing_clock(self):
-        """`DC-CE-4-r1`: both stamps come from `time.monotonic`, which cannot step backwards.
-
-        The pin the injection cannot supply on its own: a build that rebound `_now` to
-        `time.time()` keeps every injected witness green while re-opening the entry a clock
-        adjustment makes immune to both advertised bounds.
+        """`DC-CE-4-r1`: both stamps come from `time.monotonic`, which cannot step
+        backwards — the pin the injection cannot supply on its own.
         """
         assert image._now is time.monotonic
 
     def test_w7_a_wall_clock_adjustment_cannot_pin_an_entry(self, mocker):
-        """Stamps and every comparison come from one source, not from the wall clock.
-
-        No stamp injection here, deliberately: this row's wrong build reads the wall clock,
-        so the adjustment has to land on a name that build actually resolves at call time.
-        The wall clock is pinned at 1000 s and then at 400 s — one step back of 600 s — and
-        three writes go in past the size bound. A wall-clock module leaves the first entry
-        holding the largest stamp: last in every later deletion slice, and negatively aged,
-        so neither advertised bound can ever remove it (`DC-CE-4-r1`).
+        """Stamps and every comparison come from one source, not from the wall clock. No
+        injection here on purpose: the wrong build resolves the wall clock itself, and a step
+        back of 600 s leaves its first entry pinned out of both bounds (`DC-CE-4-r1`).
         """
         mocker.patch.object(config, "IMAGE_CACHE_MAX_SIZE", 2)
         mocker.patch.object(config, "IMAGE_CACHE_TTL", 100)
@@ -325,11 +288,8 @@ class TestWritePathReclamation:
         assert wall.call_count == 0, "a stamp or an age came off the wall clock"
 
     def test_an_empty_messages_body_is_returned_before_the_sweep(self):
-        """Recorded boundary, not a requirement: this path never sweeps, by construction.
-
-        Both guarded call sites gate on `has_images`, which is False for an absent or empty
-        list, so no request reaches this branch; the early return stays and the tail sweep
-        sits after the loop it skips (`065` footnote F3).
+        """Recorded boundary, not a requirement: both call sites gate on `has_images`, so
+        no request reaches this branch (`065` footnote F3).
         """
         request = {"messages": []}
 
