@@ -46,6 +46,27 @@ from tests.qa.tls_peer import MARKER, TlsPeer
 
 # TC-003 — VP-T006-verify-on-by-default
 
+def _assert_refused_before_the_peer(proxy, peer):
+    """No opt-out: the request fails as a certificate error and the peer serves nothing."""
+    status, body = proxy.post(messages_body("qap-ms004-tc003", "tc003 t0"))
+    # Visible result: the request does not complete against that upstream.
+    assert status != 200, f"W1: untrusted peer returned 200: {body[:300]!r}"
+    assert status >= 400, f"expected a server-side failure, got {status}: {body[:300]!r}"
+    assert MARKER not in body, f"W1: the caller received the peer's answer: {body[:300]!r}"
+    # The failure's error class, not merely "some 5xx".
+    assert_cert_verification_failure(status, body, proxy.stderr())
+    # Independent witness: the attempt happened and the client aborted the
+    # handshake after evaluating the certificate.
+    assert poll_until(lambda: bool(peer.handshake_aborts), deadline=PATH_DEADLINE), (
+        f"no aborted TLS attempt was recorded — the peer was never reached, so the "
+        f"refusal below is not evidence of a posture: {peer.summary()}"
+    )
+    assert peer.paths() == set(), (
+        f"W1: the peer served a request with no opt-out: {peer.summary()}"
+    )
+    return status, body
+
+
 def test_tc003_untrusted_peer_refused_by_default(tmp_path):
     """No opt-out: the untrusted-certificate HTTPS upstream is not reached, and
     the failure's class is certificate verification."""
@@ -57,22 +78,7 @@ def test_tc003_untrusted_peer_refused_by_default(tmp_path):
         upstream=peer.url(), require_live_upstream=False, probe_report=report_path,
     )
     try:
-        status, body = proxy.post(messages_body("qap-ms004-tc003", "tc003 t0"))
-        # Visible result: the request does not complete against that upstream.
-        assert status != 200, f"W1: untrusted peer returned 200: {body[:300]!r}"
-        assert status >= 400, f"expected a server-side failure, got {status}: {body[:300]!r}"
-        assert MARKER not in body, f"W1: the caller received the peer's answer: {body[:300]!r}"
-        # The failure's error class, not merely "some 5xx".
-        assert_cert_verification_failure(status, body, proxy.stderr())
-        # Independent witness: the attempt happened and the client aborted the
-        # handshake after evaluating the certificate.
-        assert poll_until(lambda: bool(peer.handshake_aborts), deadline=PATH_DEADLINE), (
-            f"no aborted TLS attempt was recorded — the peer was never reached, so the "
-            f"refusal below is not evidence of a posture: {peer.summary()}"
-        )
-        assert peer.paths() == set(), (
-            f"W1: the peer served a request with no opt-out: {peer.summary()}"
-        )
+        status, _ = _assert_refused_before_the_peer(proxy, peer)
         # Lifecycle: the refusal leaves the proxy serving, identically.
         assert proxy.proc.poll() is None, "a refused upstream took the process down"
         status2, body2 = proxy.post(messages_body("qap-ms004-tc003", "tc003 t1 — still serving"))
@@ -94,6 +100,18 @@ def test_tc003_untrusted_peer_refused_by_default(tmp_path):
 
 # TC-113 — VP-T006-optout-honored
 
+def _assert_optout_reaches_every_site(peer):
+    """The opt-out carried the internal call sites, the proxied hit, and no aborts."""
+    assert poll_until(lambda: {MODEL_PROBE, METRICS_POLL} <= peer.paths(),
+                      deadline=PATH_DEADLINE), (
+        f"the opt-out did not carry the internal call sites: {peer.summary()}"
+    )
+    assert peer.count_suffix(PROXIED) >= 1, peer.summary()
+    assert not peer.handshake_aborts, (
+        f"a verifying handshake was attempted despite the opt-out: {peer.summary()}"
+    )
+
+
 def test_tc113_same_peer_accepted_with_optout(tmp_path):
     """With the opt-out, the same peer and the same request complete."""
     peer = start_peer()
@@ -104,20 +122,13 @@ def test_tc113_same_peer_accepted_with_optout(tmp_path):
         upstream=peer.url(), require_live_upstream=False, probe_report=report_path,
     )
     try:
-        assert poll_until(lambda: {MODEL_PROBE, METRICS_POLL} <= peer.paths(),
-                          deadline=PATH_DEADLINE), (
-            f"the opt-out did not carry the internal call sites: {peer.summary()}"
-        )
         status, body = proxy.post(messages_body("qap-ms004-tc113", "tc113 t0"))
         assert status == 200, (
             f"the opt-out did not reach the connector: status={status} "
             f"body={body[:300]!r} stderr={proxy.stderr()[-800:]!r}"
         )
         assert MARKER in body, f"the answer did not come from the gate's peer: {body[:300]!r}"
-        assert peer.count_suffix(PROXIED) >= 1, peer.summary()
-        assert not peer.handshake_aborts, (
-            f"a verifying handshake was attempted despite the opt-out: {peer.summary()}"
-        )
+        _assert_optout_reaches_every_site(peer)
         assert proxy.proc.poll() is None
     finally:
         rc = proxy.stop(signal.SIGTERM)
@@ -151,6 +162,60 @@ def _drive_all_call_sites(proxy: Proxy, peer: TlsPeer, system: str) -> dict:
     }
 
 
+def _assert_optout_everywhere(result, peer):
+    """Run A's claim: with the opt-out, every call site reached the peer."""
+    assert result["internal_paths_at_peer"], peer.summary()
+    assert result["status"] == 200 and MARKER in result["body"], (
+        f"proxied call site did not complete: {result['status']} {result['body'][:300]!r}"
+    )
+    missing = {p for p in OUTBOUND_PATHS if peer.count_suffix(p) == 0}
+    assert not missing, (
+        f"W2-shaped gap: the opt-out did not govern every call site; missing "
+        f"{sorted(missing)} of {sorted(OUTBOUND_PATHS)} "
+        f"(peer saw {sorted(peer.paths())})"
+    )
+
+
+def _assert_refused_everywhere(result, peer, proxy):
+    """Run B's claim: with no opt-out, no call site reached the peer."""
+    assert result["status"] != 200 and MARKER not in result["body"], (
+        f"W1: a call site reached the untrusted peer: {result['status']} {result['body'][:300]!r}"
+    )
+    assert_cert_verification_failure(result["status"], result["body"], proxy.stderr())
+    assert poll_until(lambda: bool(peer.handshake_aborts), deadline=PATH_DEADLINE), (
+        peer.summary()
+    )
+    assert peer.paths() == set(), (
+        f"W2: some call site skipped verification while another refused; the peer "
+        f"served {sorted(peer.paths())} with no opt-out — {peer.summary()}"
+    )
+
+
+def _run_arm(tmp_path, tag, extra_args):
+    """One TC-114 arm: peer, proxy, every call site, the arm's evidence, the report."""
+    peer = start_peer()
+    report_path = str(tmp_path / f"probe-{tag}.json")
+    proxy = Proxy(
+        tmp_path / f"dump-{tag}", tmp_path / f"logs-{tag}",
+        extra_args=extra_args,
+        upstream=peer.url(), require_live_upstream=False, probe_report=report_path,
+    )
+    try:
+        result = _drive_all_call_sites(proxy, peer, f"qap-ms004-tc114-{tag}")
+        if extra_args:
+            _assert_optout_everywhere(result, peer)
+        else:
+            _assert_refused_everywhere(result, peer, proxy)
+    finally:
+        rc = proxy.stop(signal.SIGTERM)
+        peer.stop()
+    report = read_report(proxy, report_path)
+    connector = assert_single_client(report)
+    assert_all_calls_through(report, connector, urlparse(peer.url()).netloc)
+    assert_clean_shutdown(proxy, rc)
+    return report, connector
+
+
 def test_tc114_one_posture_governs_every_outbound_call(tmp_path):
     """One opt-out, one connector: every call site carries the same posture.
 
@@ -158,70 +223,19 @@ def test_tc114_one_posture_governs_every_outbound_call(tmp_path):
     B shares that bound, so "the peer saw nothing" is a refusal, not a short wait.
     """
     # --- run A: opt-out, every call site completes -------------------------
-    peer_a = start_peer()
-    report_a_path = str(tmp_path / "probe-a.json")
-    proxy_a = Proxy(
-        tmp_path / "dump-a", tmp_path / "logs-a",
-        extra_args=["--skip-tls-verify"],
-        upstream=peer_a.url(), require_live_upstream=False, probe_report=report_a_path,
-    )
-    try:
-        a = _drive_all_call_sites(proxy_a, peer_a, "qap-ms004-tc114-optout")
-        assert a["internal_paths_at_peer"], peer_a.summary()
-        assert a["status"] == 200 and MARKER in a["body"], (
-            f"proxied call site did not complete: {a['status']} {a['body'][:300]!r}"
-        )
-        missing_a = {p for p in OUTBOUND_PATHS if peer_a.count_suffix(p) == 0}
-        assert not missing_a, (
-            f"W2-shaped gap: the opt-out did not govern every call site; missing "
-            f"{sorted(missing_a)} of {sorted(OUTBOUND_PATHS)} "
-            f"(peer saw {sorted(peer_a.paths())})"
-        )
-    finally:
-        rc_a = proxy_a.stop(signal.SIGTERM)
-        peer_a.stop()
-    report_a = read_report(proxy_a, report_a_path)
-    connector_a = assert_single_client(report_a)
+    report_a, connector_a = _run_arm(tmp_path, "optout", ["--skip-tls-verify"])
     assert connector_a["ssl_kwarg"] == "False", connector_a
     assert OUTBOUND_PATHS <= call_paths(report_a), (
         f"instrumented call sites incomplete: {sorted(call_paths(report_a))}"
     )
-    assert_all_calls_through(report_a, connector_a, urlparse(peer_a.url()).netloc)
-    assert_clean_shutdown(proxy_a, rc_a)
 
     # --- run B: no opt-out, no call site completes -------------------------
-    peer_b = start_peer()
-    report_b_path = str(tmp_path / "probe-b.json")
-    proxy_b = Proxy(
-        tmp_path / "dump-b", tmp_path / "logs-b",
-        extra_args=[],
-        upstream=peer_b.url(), require_live_upstream=False, probe_report=report_b_path,
-    )
-    try:
-        b = _drive_all_call_sites(proxy_b, peer_b, "qap-ms004-tc114-default")
-        assert b["status"] != 200 and MARKER not in b["body"], (
-            f"W1: a call site reached the untrusted peer: {b['status']} {b['body'][:300]!r}"
-        )
-        assert_cert_verification_failure(b["status"], b["body"], proxy_b.stderr())
-        assert poll_until(lambda: bool(peer_b.handshake_aborts), deadline=PATH_DEADLINE), (
-            peer_b.summary()
-        )
-        assert peer_b.paths() == set(), (
-            f"W2: some call site skipped verification while another refused; the peer "
-            f"served {sorted(peer_b.paths())} with no opt-out — {peer_b.summary()}"
-        )
-    finally:
-        rc_b = proxy_b.stop(signal.SIGTERM)
-        peer_b.stop()
-    report_b = read_report(proxy_b, report_b_path)
-    connector_b = assert_single_client(report_b)
+    report_b, connector_b = _run_arm(tmp_path, "default", [])
     assert connector_b["ssl_kwarg"] == "True", connector_b
     assert OUTBOUND_PATHS <= call_paths(report_b), (
         f"the default posture was not exercised at every call site, so the absence "
         f"claim above is unproven: {sorted(call_paths(report_b))}"
     )
-    assert_all_calls_through(report_b, connector_b, urlparse(peer_b.url()).netloc)
-    assert_clean_shutdown(proxy_b, rc_b)
 
     # --- both postures from one connector ---------------------------------
     assert connector_a["ssl_kwarg"] != connector_b["ssl_kwarg"], (

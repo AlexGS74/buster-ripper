@@ -75,56 +75,52 @@ def test_r1_duplicate_flag_occurrence_honored_once(tmp_path):
     assert_clean_shutdown(proxy, rc)
 
 
+def _run_url_shape_arm(tmp_path, tag, extra_args):
+    """One URL-shape arm: peer, proxy on the hostile URL, the arm's witness, the report."""
+    hostile_suffix = "/qa-base/../"
+    peer = start_peer()
+    report_path = str(tmp_path / f"probe-{tag}.json")
+    proxy = Proxy(
+        tmp_path / f"dump-{tag}", tmp_path / f"logs-{tag}",
+        extra_args=extra_args,
+        upstream=peer.url() + hostile_suffix,
+        require_live_upstream=False, probe_report=report_path,
+    )
+    try:
+        if extra_args:
+            assert poll_until(lambda: bool(peer.paths()), deadline=PATH_DEADLINE), (
+                f"the opt-out stopped working for a URL with a path prefix: "
+                f"{peer.summary()} stderr={proxy.stderr()[-800:]!r}"
+            )
+            assert not peer.handshake_aborts, peer.summary()
+        else:
+            status, body = proxy.post(messages_body("qap-ms004-r1-url-verify", "r1u t0"))
+            assert status != 200 and MARKER not in body, (
+                f"W1 through a URL shape: {status} {body[:300]!r}"
+            )
+            assert_cert_verification_failure(status, body, proxy.stderr())
+            assert poll_until(lambda: bool(peer.handshake_aborts), deadline=PATH_DEADLINE), (
+                peer.summary()
+            )
+            assert peer.paths() == set(), peer.summary()
+    finally:
+        rc = proxy.stop(signal.SIGTERM)
+        peer.stop()
+    report = read_report(proxy, report_path)
+    connector = assert_single_client(report)
+    assert_clean_shutdown(proxy, rc)
+    return report, connector
+
+
 def test_r1_upstream_url_shape_does_not_change_posture(tmp_path):
     """A trailing slash and a dot segment in ``--upstream`` must not become a way
     past the posture — in either direction."""
-    hostile_suffix = "/qa-base/../"
     # verifying posture: still refused, whatever the URL shape
-    peer_a = start_peer()
-    report_a_path = str(tmp_path / "probe-a.json")
-    proxy_a = Proxy(
-        tmp_path / "dump-a", tmp_path / "logs-a",
-        extra_args=[],
-        upstream=peer_a.url() + hostile_suffix,
-        require_live_upstream=False, probe_report=report_a_path,
-    )
-    try:
-        status, body = proxy_a.post(messages_body("qap-ms004-r1-url-verify", "r1u t0"))
-        assert status != 200 and MARKER not in body, (
-            f"W1 through a URL shape: {status} {body[:300]!r}"
-        )
-        assert_cert_verification_failure(status, body, proxy_a.stderr())
-        assert poll_until(lambda: bool(peer_a.handshake_aborts), deadline=PATH_DEADLINE), (
-            peer_a.summary()
-        )
-        assert peer_a.paths() == set(), peer_a.summary()
-    finally:
-        rc_a = proxy_a.stop(signal.SIGTERM)
-        peer_a.stop()
-    report_a = read_report(proxy_a, report_a_path)
-    assert assert_single_client(report_a)["ssl_kwarg"] == "True"
-    assert_clean_shutdown(proxy_a, rc_a)
+    _, connector_a = _run_url_shape_arm(tmp_path, "verify", [])
+    assert connector_a["ssl_kwarg"] == "True"
 
     # opted-out posture: still accepted, whatever the URL shape. Which path the
     # dot segment normalizes to is not this gate's subject — completing the
     # handshake under the opt-out is.
-    peer_b = start_peer()
-    report_b_path = str(tmp_path / "probe-b.json")
-    proxy_b = Proxy(
-        tmp_path / "dump-b", tmp_path / "logs-b",
-        extra_args=["--skip-tls-verify"],
-        upstream=peer_b.url() + hostile_suffix,
-        require_live_upstream=False, probe_report=report_b_path,
-    )
-    try:
-        assert poll_until(lambda: bool(peer_b.paths()), deadline=PATH_DEADLINE), (
-            f"the opt-out stopped working for a URL with a path prefix: "
-            f"{peer_b.summary()} stderr={proxy_b.stderr()[-800:]!r}"
-        )
-        assert not peer_b.handshake_aborts, peer_b.summary()
-    finally:
-        rc_b = proxy_b.stop(signal.SIGTERM)
-        peer_b.stop()
-    report_b = read_report(proxy_b, report_b_path)
-    assert assert_single_client(report_b)["ssl_kwarg"] == "False"
-    assert_clean_shutdown(proxy_b, rc_b)
+    _, connector_b = _run_url_shape_arm(tmp_path, "optout", ["--skip-tls-verify"])
+    assert connector_b["ssl_kwarg"] == "False"

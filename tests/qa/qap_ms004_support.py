@@ -52,17 +52,20 @@ def call_paths(report: dict) -> set[str]:
     return {urlparse(c["path"]).path for c in report.get("calls", [])}
 
 
-def assert_single_client(report: dict) -> dict:
-    """The plan's one-connector assertion, once, for every scenario that needs it."""
+def _assert_one_connector(report: dict) -> None:
+    """Exactly one TCPConnector for the process."""
     assert report["total_connectors"] == 1, (
         f"expected exactly one TCPConnector for the process, got "
         f"{report['total_connectors']}: {json.dumps(report['connectors'], indent=2)}"
     )
+
+
+def _assert_one_session(report: dict, connector: dict) -> None:
+    """Exactly one ClientSession, built on that connector, with no ssl of its own."""
     assert report["total_sessions"] == 1, (
         f"expected exactly one ClientSession for the process, got "
         f"{report['total_sessions']}: {json.dumps(report['sessions'], indent=2)}"
     )
-    connector = report["connectors"][0]
     session = report["sessions"][0]
     assert session["connector_id"] == connector["id"], (
         "the one ClientSession is not built on the one TCPConnector"
@@ -71,6 +74,13 @@ def assert_single_client(report: dict) -> dict:
         "a per-session ssl argument is a second posture source — the plan settles "
         f"one connector, one posture: {session}"
     )
+
+
+def assert_single_client(report: dict) -> dict:
+    """The plan's one-connector assertion, once, for every scenario that needs it."""
+    _assert_one_connector(report)
+    connector = report["connectors"][0]
+    _assert_one_session(report, connector)
     return connector
 
 
