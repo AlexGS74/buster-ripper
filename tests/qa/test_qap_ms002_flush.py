@@ -57,6 +57,39 @@ def _counted_run(tmp_path, tag, fmt):
     return rep, sid_dir
 
 
+def _assert_counted_collapsed(rep, sid_dir, fmt):
+    artifact = os.path.join(sid_dir, f"{fmt}.log")
+    final_size = os.path.getsize(artifact)
+    # F controlled by the injected threshold: exactly two flushes.
+    assert rep["total_ops"] == 2, f"{fmt}: expected F=2 write ops, got {rep['total_ops']}"
+    assert all(os.path.abspath(o["path"]) == os.path.abspath(artifact) for o in rep["ops"])
+    # Witness A excluded: one write per flush of K >= 2 pending turns.
+    # Witness B excluded: bytes track the pending batches, not the
+    # accumulated artifact (no rewrite-per-flush).
+    assert all(0 < o["bytes"] < final_size for o in rep["ops"])
+    assert sum(o["bytes"] for o in rep["ops"]) == final_size
+    # TC-109: file count 1 collapsed ...
+    assert os.listdir(sid_dir) == [f"{fmt}.log"]
+    assert len(summary_lines(read_text(artifact))) == N_TURNS
+
+
+def _assert_documented_half(rep, sid_dir):
+    # ... versus N + 1 documented, at 2N write-bearing operations.
+    expected_files = (
+        {"turn_000.json", "index.txt"}
+        | {f"turn_{i:03d}.diff" for i in range(1, N_TURNS)}
+    )
+    assert sorted(os.listdir(sid_dir)) == sorted(expected_files)
+    assert rep["total_ops"] == 2 * N_TURNS
+    index_text = read_text(os.path.join(sid_dir, "index.txt"))
+    assert len([l for l in index_text.splitlines() if l.strip()]) == N_TURNS
+    assert json.loads(read_text(os.path.join(sid_dir, "turn_000.json")))["model"] == (
+        "sloppus"
+    )
+    # No .log artifact may appear on the documented path.
+    assert not log_artifacts(os.path.dirname(sid_dir))
+
+
 def test_tc105_tc109_write_and_file_counts_paired_runs(tmp_path):
     results = {}
     for fmt in (*COLLAPSED_FORMATS, None):  # None = documented format
@@ -76,35 +109,10 @@ def test_tc105_tc109_write_and_file_counts_paired_runs(tmp_path):
 
     for fmt in COLLAPSED_FORMATS:
         rep, sid_dir = results[fmt]
-        artifact = os.path.join(sid_dir, f"{fmt}.log")
-        final_size = os.path.getsize(artifact)
-        # F controlled by the injected threshold: exactly two flushes.
-        assert rep["total_ops"] == 2, f"{fmt}: expected F=2 write ops, got {rep['total_ops']}"
-        assert all(os.path.abspath(o["path"]) == os.path.abspath(artifact) for o in rep["ops"])
-        # Witness A excluded: one write per flush of K >= 2 pending turns.
-        # Witness B excluded: bytes track the pending batches, not the
-        # accumulated artifact (no rewrite-per-flush).
-        assert all(0 < o["bytes"] < final_size for o in rep["ops"])
-        assert sum(o["bytes"] for o in rep["ops"]) == final_size
-        # TC-109: file count 1 collapsed ...
-        assert os.listdir(sid_dir) == [f"{fmt}.log"]
-        assert len(summary_lines(read_text(artifact))) == N_TURNS
+        _assert_counted_collapsed(rep, sid_dir, fmt)
 
     rep, sid_dir = results["documented"]
-    # ... versus N + 1 documented, at 2N write-bearing operations.
-    expected_files = (
-        {"turn_000.json", "index.txt"}
-        | {f"turn_{i:03d}.diff" for i in range(1, N_TURNS)}
-    )
-    assert sorted(os.listdir(sid_dir)) == sorted(expected_files)
-    assert rep["total_ops"] == 2 * N_TURNS
-    index_text = read_text(os.path.join(sid_dir, "index.txt"))
-    assert len([l for l in index_text.splitlines() if l.strip()]) == N_TURNS
-    assert json.loads(read_text(os.path.join(sid_dir, "turn_000.json")))["model"] == (
-        "sloppus"
-    )
-    # No .log artifact may appear on the documented path.
-    assert not log_artifacts(str(tmp_path / "dump-documented"))
+    _assert_documented_half(rep, sid_dir)
 
 
 # TC-106 — VP-T002-volume-flush
@@ -206,6 +214,31 @@ def test_tc111_interval_flush(tmp_path):
 
 # TC-112 — VP-T003-timer-resilience
 
+def _drive_raising_ticks(proxy, artifact, system):
+    # Inject a raising flush: the artifact becomes unwritable for the
+    # owner, so every tick's flush raises. The loop must log and continue.
+    os.chmod(artifact, 0o444)
+    try:
+        for i in (1, 2):
+            st, body = proxy.post(turn_body(system, f"resilience-t{i}"))
+            assert_upstream_response(st, body)
+        ok = poll_until(
+            lambda: "PermissionError" in proxy.stderr(), deadline=20
+        )
+        assert ok, "the failing tick must be logged"
+
+        # A later tick, after the fault clears, must flush the retained batch.
+        os.chmod(artifact, 0o644)
+        ok = poll_until(
+            lambda: "turn 001" in read_text(artifact)
+            and "turn 002" in read_text(artifact),
+            deadline=20,
+        )
+        assert ok, "a later tick must flush successfully after the raise"
+    finally:
+        os.chmod(artifact, 0o644)
+
+
 def test_tc112_timer_resilience(tmp_path):
     system = "qa-ms002-resilience"
     dump = tmp_path / "dump"
@@ -228,28 +261,7 @@ def test_tc112_timer_resilience(tmp_path):
         )
         assert ok, "first tick must flush turn 0"
 
-        # Inject a raising flush: the artifact becomes unwritable for the
-        # owner, so every tick's flush raises. The loop must log and continue.
-        os.chmod(artifact, 0o444)
-        try:
-            for i in (1, 2):
-                st, body = proxy.post(turn_body(system, f"resilience-t{i}"))
-                assert_upstream_response(st, body)
-            ok = poll_until(
-                lambda: "PermissionError" in proxy.stderr(), deadline=20
-            )
-            assert ok, "the failing tick must be logged"
-
-            # A later tick, after the fault clears, must flush the retained batch.
-            os.chmod(artifact, 0o644)
-            ok = poll_until(
-                lambda: "turn 001" in read_text(artifact)
-                and "turn 002" in read_text(artifact),
-                deadline=20,
-            )
-            assert ok, "a later tick must flush successfully after the raise"
-        finally:
-            os.chmod(artifact, 0o644)
+        _drive_raising_ticks(proxy, artifact, system)
         assert proxy.proc.poll() is None, "process healthy throughout"
     finally:
         rc = proxy.stop()
