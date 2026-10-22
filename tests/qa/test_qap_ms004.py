@@ -7,7 +7,9 @@ request with ``--skip-tls-verify``), TC-114 VP-T006-posture-is-process-wide (one
 connector, one posture, for the proxied request, the ``/v1/models`` probe and the
 ``/metrics`` poll) and W2 (both postures behaving identically); the adversarial
 tier adds the R5 trust-identity near-miss pair and the R1 flag-repeat and
-upstream-URL-shape boundaries. R2 and R4 have no surface in this milestone.
+upstream-URL-shape boundaries and lives in
+`tests/qa/test_qap_ms004_adversarial.py`. R2 and R4 have no surface in this
+milestone.
 
 Harness (``qa-project`` §Upstream + §Capability Declarations): this gate starts its
 own loopback self-signed HTTPS peer with ``require_live_upstream=False`` and asserts
@@ -16,7 +18,7 @@ is bounded polling of the peer's request log and quiescence is process exit — 
 fixed sleeps, no telemetry.
 
 Run explicitly (not in the hermetic default suite):
-``.venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts=``.
+``.venv/bin/python -m pytest tests/qa/test_qap_ms004.py tests/qa/test_qap_ms004_adversarial.py -o addopts=``.
 """
 
 from __future__ import annotations

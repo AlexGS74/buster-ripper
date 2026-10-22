@@ -7,10 +7,12 @@ VP-T002-turn0-available, TC-105 VP-T002-write-count-reduced (G-008(b)), TC-106
 VP-T002-volume-flush, TC-109 VP-T002-file-count-reduced, TC-110
 VP-T003-shutdown-flush (SIGINT/SIGTERM), TC-111 VP-T003-interval-flush, TC-112
 VP-T003-timer-resilience; the hostile tier (R1/R2) maps to
-VP-T002-collapsed-artifact and VP-T002-volume-flush.
+VP-T002-collapsed-artifact and VP-T002-volume-flush and lives in
+`tests/qa/test_qap_ms002_hostile.py`; the flush tier lives in
+`tests/qa/test_qap_ms002_flush.py`.
 
 Run explicitly (not in the hermetic default suite):
-``.venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts=``.
+``.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms002_hostile.py tests/qa/test_qap_ms002_flush.py -o addopts=``.
 
 The declared live upstream is required: gates fail closed without it and assert on
 dump artifacts and process behaviour, never model output (a proxy-local 502 is not a
