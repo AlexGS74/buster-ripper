@@ -234,3 +234,36 @@
   Ask: no — shrinking them would mean deviating from the signatures the map names.
 - Noticed: `_await_both_artifacts` receives the sentinels (`"sentinel-one"`, `"sentinel-two"`) in its `s1`/`s2` parameters, so the poll predicate is byte-identical to HEAD's inline literals.
   Ask: no — passing the session prompts instead would change what the poll waits for.
+
+## U5 Forward
+- Moved: `PATH_DEADLINE`, `CERT_MARKER`, `CERT_REASON`, `MODEL_PROBE`, `METRICS_POLL`, `PROXIED`, `OUTBOUND_PATHS` (with their two `#:` comments) -> tests/qa/qap_ms004_support.py
+- Moved: `start_peer`, `read_report`, `call_paths`, `assert_single_client`, `assert_all_calls_through`, `assert_cert_verification_failure`, `assert_clean_shutdown`, `messages_body` (with the `# helpers` banner, byte-identical: `diff` of the old `:33-132` against the new module's `:13-112` is empty) -> tests/qa/qap_ms004_support.py
+- Reshaped: nothing
+- Files: tests/qa/qap_ms004_support.py (new), tests/qa/test_qap_ms004.py
+- Tests edited: tests/qa/test_qap_ms004.py: import block only (dropped `os` and `turn_body`, added `from tests.qa.qap_ms004_support import (...)`); `json`, `signal`, `urlparse`, `Proxy`, `poll_until`, `MARKER` and `TlsPeer` stay and are still used
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts=` -> 6 passed (after row 1); 6 passed (after row 2); `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` (Verify) -> 10 passed
+- Scan: `tests/qa/test_qap_ms004.py` — file 347 lines (review <=300), noise decomposition 22 trimmable full-line comments; 6 issues in 6 functions: Long Function 4, Medium Length 2; top: `test_tc114_one_posture_governs_every_outbound_call` L:71 N:1 C:4 P:1, `test_r1_upstream_url_shape_does_not_change_posture` L:45 N:0 C:2 P:1, `test_tc003_untrusted_peer_refused_by_default` L:36 N:0 C:2 P:1, `test_tc113_same_peer_accepted_with_optout` L:34 N:0 C:1 P:1, `test_r1_duplicate_flag_occurrence_honored_once` L:21 N:0 C:2 P:1. `tests/qa/qap_ms004_support.py` — 1 issue in 1 function: Medium Length 1; `assert_single_client` L:18 N:0 C:1 P:1. Together 7 issues in 7 functions — exactly the set the Safety net printed in `tests/qa/test_qap_ms004.py`; every function and metric matches, none added, none worse
+- Sizes: tests/qa/test_qap_ms004.py: 347, tests/qa/qap_ms004_support.py: 115
+- Noticed: the map's import note says `json` leaves with the helpers, but `test_tc114_one_posture_governs_every_outbound_call` still formats `json.dumps(report['calls'], indent=2)` in its final "both postures from one connector" block, which U7's extraction rows do not name, so `json` stays in the test module.
+  Ask: no — dropping it would only surface as a NameError while that assertion is already failing, and no passing run changes.
+- Noticed: `os` and `turn_body` did leave, as the row says; `urlparse`, `Proxy`, `poll_until`, `MARKER` and `TlsPeer` are needed by both the helpers and the gate bodies (or the remaining R5 test) and stay in the test module.
+  Ask: no — every remaining import is used and every moved helper's dependency is imported in the support module.
+- Noticed: the support module imports `Proxy` for its two parameter annotations only; with `from __future__ import annotations` that is a typing import, kept for the documented signature, and pyflakes counts annotation use as use, so the repo's `F` gate stays clean (ruff is not installed in this worktree, so the gate itself was not run).
+  Ask: no — it changes no runtime path.
+- Noticed: no witness line names either path (`invariants/` and the roadmap never mention `tests/qa/test_qap_ms004.py` helpers), so `codify knowledge sync-registry --apply` was not run; no other module imports names from `tests.qa.test_qap_ms004`.
+  Ask: no — the registry tracks neither module and the re-point list is empty.
+
+## U5 Yield
+- Verdict: ACCEPT
+- Ran: `.venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts=` -> 6 passed in 44.79s (the module's narrow tests); `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms004.py -o addopts=` -> 10 passed in 49.34s (the 11 MS-002 tests moved by U2/U3 are no longer collected by this command, as their map rows say); `.venv/bin/python -m pytest tests/qa/test_qap_ms002_hostile.py tests/qa/test_qap_ms002_flush.py -o addopts=` -> 11 passed in 22.55s. 21 of 21 tests green across the four modules, equal to the Safety net's 21 passed, 0 skipped.
+- Scan: `codify scan path tests/qa/test_qap_ms004.py tests/qa/qap_ms004_support.py` -> `tests/qa/test_qap_ms004.py` 347 lines (review <=300), noise decomposition 22 trimmable full-line comments, 6 issues in 6 functions: Long Function 4, Medium Length 2, top `test_tc114_one_posture_governs_every_outbound_call` L:71 N:1 C:4 P:1, `test_r1_upstream_url_shape_does_not_change_posture` L:45 N:0 C:2 P:1, `test_tc003_untrusted_peer_refused_by_default` L:36 N:0 C:2 P:1, `test_tc113_same_peer_accepted_with_optout` L:34 N:0 C:1 P:1, `test_r1_duplicate_flag_occurrence_honored_once` L:21 N:0 C:2 P:1; `tests/qa/qap_ms004_support.py` 1 issue in 1 function: Medium Length 1, `assert_single_client` L:18 N:0 C:1 P:1. Together 7 issues in 7 functions — exactly the set the Safety net printed in `tests/qa/test_qap_ms004.py`; every function and metric matches, none added, none worse.
+- Sizes: tests/qa/test_qap_ms004.py: 347, tests/qa/qap_ms004_support.py: 115
+- Findings: none
+- Noticed: `diff` of HEAD's `tests/qa/test_qap_ms004.py:33-132` against `tests/qa/qap_ms004_support.py:13-112` is empty, `#:` comments and the `# helpers` banner included; the new file adds only its one-line docstring, `from __future__`, and the import block, and the test file's diff holds only import lines plus that removed block, with every test body byte-identical.
+  Ask: no — the move is byte-for-byte and the tests collect and pass unchanged.
+- Noticed: the map's import note says `json` leaves with the helpers, but `test_tc114_one_posture_governs_every_outbound_call` still formats `json.dumps(report['calls'], indent=2)` at `:235`, a line U7's rows do not name, so `json` stays; `os` and `turn_body` did leave, and `CERT_REASON` is not imported because the test file no longer uses it.
+  Ask: no — dropping `json` would only surface as a NameError while that assertion is already failing, and every remaining import is used.
+- Noticed: the 6 remaining findings in `tests/qa/test_qap_ms004.py` are the same pre-existing functions the Safety net printed (the file stays 347 lines, over the 300 review bound), and `assert_single_client`'s L:18 Medium Length moved verbatim; U6/U7 carry the map rows for all of them.
+  Ask: no — pre-existing debt this unit only relocated, and U6/U7 already own it.
+- Noticed: no witness line names either path (`invariants/` and the roadmap mention neither module's helpers; roadmap line 45 only says `tests/qa/test_qap_ms004.py` carries both postures, still true), so no registry command was needed and no other module imports names from `tests.qa.test_qap_ms004`.
+  Ask: no — the re-point list is empty and the registry tracks neither module.
