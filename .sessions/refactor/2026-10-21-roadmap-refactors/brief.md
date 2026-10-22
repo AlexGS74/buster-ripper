@@ -1,0 +1,379 @@
+# Restructure the three remaining refactor rows
+
+- Goal: take RM-001, RM-002 and RM-025 as one behavior-preserving refactor session.
+- Target: RM-001, RM-002, RM-025 (freed for this session from the stale `origin/fix/tool-reference-scrub` branch, last commit 2026-09-17).
+- In scope: `buster_ripper/routes/messages.py`, `buster_ripper/routes/chat.py`, `buster_ripper/dump.py`, `tests/test_compaction.py`
+- Importers: `buster_ripper/routes/messages.py`, `buster_ripper/routes/stream_relay.py`, `buster_ripper/routes/chat.py`, `buster_ripper/dump.py`, `buster_ripper/dump_render.py`, `tests/test_stream_relay_commit.py`, `tests/test_preserved_thinking.py`, `tests/test_dump.py`, `tests/test_dump_records.py`, `tests/test_dump_triggers.py`, `tests/test_compaction.py`, `tests/test_compaction_poll.py`, `tests/test_compaction_ema.py`
+- Out of scope: `buster_ripper_legacy.py`, the `tests/qa/` QA gate modules, the RM-010/RM-011/RM-012 design passes, and the RM-013/RM-014/RM-015/RM-022/RM-023 future-scope rows; no behavior change.
+- Verify: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=`
+- Final verify: `uv run pytest`
+- Worktree: /Users/alexhubitski/Worktrees/buster-ripper/refactor-roadmap
+
+## Decided
+- 2026-10-21: "Free the three refactor rows (Recommended)" — RM-001, RM-002 and RM-025 are freed for this session. The stale `origin/fix/tool-reference-scrub` branch is left untouched.
+## Collected
+| # | Candidate | Why | Recorded as | State |
+|---|---|---|---|---|
+| 1 | buster_ripper/routes/messages.py | 341 lines (review: <=300); 19 issues in 7 functions — High Complexity 1, Deep Nesting 2, Long Function 2, Medium Complexity 2, Medium Length 4, Medium Nesting 3, Medium Parameters 5; `handle_messages` L:28 N:2 C:12 (High Complexity), `_non_stream_single_request` L:34 N:4 C:8 P:4 (Long Function, Deep Nesting), `handle_streaming` L:25 N:3 C:8 P:4 (Deep Nesting), `_stream_single_request` L:35 N:2 C:4 P:4 (Long Function); ahead of RM-010 · transport-error envelope (`messages.py:289-334`), RM-011 · content-coding posture (`:156,299`), RM-012 · route-input posture; freed by this session from `origin/fix/tool-reference-scrub` (stale since 2026-09-17) | RM-001 | free |
+| 2 | buster_ripper/dump.py | 319 lines (review: <=300) — the row records 316, so its size note is stale; 1 issue in 1 function — Medium Complexity 1: `_render_body` L:12 N:1 C:6 P:1; ahead of RM-013 · dump-format default (`:174,186,196`), RM-014 · machine record, RM-015 · dump viewer, RM-022 · restart design (`:147-158`, `:295-305`), RM-023 · append rollback (`:195-200`, `:300-307`); freed by this session from `origin/fix/tool-reference-scrub` (stale since 2026-09-17) | RM-002 | free |
+| 3 | buster_ripper/routes/chat.py | no file-level size warning — the row's 299/300 capacity note is not re-raised by the scan; 14 issues in 8 functions — Medium Complexity 4, Medium Nesting 6, Medium Length 2, Medium Parameters 1; `handle_chat` L:26 N:2 C:6 (Medium Length, Medium Nesting, Medium Complexity), `_apply_request_transforms` L:20 N:2 C:8 (Medium Complexity), `_make_chat_request` L:15 N:2 C:3 P:5 (Near Tolerance Nesting Parameters); ahead of RM-010 · transport-error envelope (`chat.py:134-152`), RM-011 · content-coding posture (`:143`), RM-012 · route-input posture; freed by this session from `origin/fix/tool-reference-scrub` (stale since 2026-09-17) | RM-001 | free |
+| 4 | tests/test_compaction.py | 451 lines (review: <=300); 2 issues in 2 functions — Medium Length 2: `test_poll_kv_cache_updates_global_cache` L:20 N:0 C:2 P:1, `test_poll_kv_cache_uses_session_get` L:17 N:0 C:2 P:1; ahead of RM-025 · drift-helper split (no other open row names the file); freed by this session from `origin/fix/tool-reference-scrub` (stale since 2026-09-17) | RM-025 | free |
+- Verify: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=`
+- Final verify: `uv run pytest`
+- Tool gaps: `quality-backlog.md` is absent from the tree (deleted by the 02.00 squash `3323551`), so its `## Refactoring` section was read from `git show 3323551^:.sessions/codify/02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/quality-backlog.md`. No CODIFY session at HEAD carries an Anchor Map (the only one, 02.00, is complete and squashed), so no `planned:` files could be derived. The scan reports no file-level line count for `buster_ripper/routes/chat.py` because it raises no size warning, so RM-001's 299/300 capacity note could not be re-measured from the scan alone.
+
+## Safety net
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 364 passed + 7 passed, 0 skipped (the worktree had no `.venv`; `uv sync` built it once, then the brief's exact command ran unchanged)
+- Scan: `codify scan path buster_ripper/routes/messages.py buster_ripper/routes/chat.py buster_ripper/dump.py tests/test_compaction.py` -> `buster_ripper/routes/messages.py` — file 341 lines (review: <=300); noise decomposition 36 trimmable full-line comments; 19 issues in 7 functions: Deep Nesting 2, High Complexity 1, Long Function 2, Medium Complexity 2, Medium Length 4, Medium Nesting 3, Medium Parameters 5; top: `_stream_single_request` L:35 N:2 C:4 P:4 (Long Function, Medium Nesting, Medium Parameters), `_non_stream_single_request` L:34 N:4 C:8 P:4 (Long Function, Deep Nesting, Medium Complexity, Medium Parameters), `handle_messages` L:28 N:2 C:12 P:1 (Medium Length, Medium Nesting, High Complexity), `handle_streaming` L:25 N:3 C:8 P:4 (Medium Length, Deep Nesting, Medium Complexity, Medium Parameters), `handle_non_streaming` L:21 N:2 C:5 P:4 (Medium Length, Medium Nesting, Medium Parameters); the detailed tree also flags `_relay_after_commit` L:9 N:1 C:3 P:4 (Medium Parameters). `buster_ripper/routes/chat.py` — 299 lines (no file-size finding); 14 issues in 8 functions: Medium Complexity 4, Medium Length 2, Medium Nesting 6, Medium Parameters 1; one near-tolerance (Nesting and Parameters); top: `handle_chat` L:26 N:2 C:6 P:1 (Medium Length, Medium Nesting, Medium Complexity), `_apply_request_transforms` L:20 N:2 C:8 P:2, `_transform_eval_response` L:15 N:2 C:7 P:4, `_make_chat_request` L:15 N:2 C:3 P:5 (Near Tolerance Nesting Parameters), `_apply_response_transforms` L:12 N:2 C:5 P:2 (Medium Nesting). `buster_ripper/dump.py` — file 319 lines (review: <=300); noise decomposition 5 trimmable full-line comments; 1 issue in 1 function: Medium Complexity 1; `_render_body` L:12 N:1 C:6 P:1. `tests/test_compaction.py` — file 451 lines (review: <=300); noise decomposition 15 trimmable full-line comments; 2 issues in 2 functions: Medium Length 2; `test_poll_kv_cache_updates_global_cache` L:20 N:0 C:2 P:1, `test_poll_kv_cache_uses_session_get` L:17 N:0 C:2 P:1
+- Sizes: buster_ripper/routes/messages.py: 341, buster_ripper/dump.py: 319, tests/test_compaction.py: 451 (buster_ripper/routes/chat.py is 299, under the bound, and the scan prints no file-size finding for it)
+- Public paths kept: none (no module in scope defines `__all__`; `handle_messages`/`handle_chat` are registered by `buster_ripper/server.py`, which stays an in-repository importer, and `dump_turn`/`flush_all`/`poll_flush` stay in `buster_ripper/dump.py`)
+
+## Map
+
+### U0 · comments
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | shrink | `_relay_after_commit` docstring (17 lines: prepare/commit, the second head, the catch class, `CancelledError`) to 4 lines; the `_request_payload` docstring (6) to 3; the `handle_streaming` docstring (4) to 3; `_stream_single_request`'s no-deadline comment (5) to 3 and its redirect comment (2) to 1; `_non_stream_single_request`'s lenient-decode comment (5) to 2 and its token-fallback comment (2) to 1; `handle_messages`'s normalize-order comment (3) to 2; `_relay_after_commit`'s position-not-cause comment (2) to 1 | buster_ripper/routes/messages.py | kept reasons: tests/test_stream_relay_commit.py's module docstring (one head/one terminal, the post-commit catch); the rest stay as one- or two-line comments |
+| 2 | shrink | module docstring (13 lines: the three formats, their artifacts and flush triggers) to 4 lines; the `flush_all` docstring (4) to 3; the `poll_flush` docstring (3) to 2 | buster_ripper/dump.py | kept reasons: README.md §Dump mode + §Collapsed dump formats already carry the three formats, their artifacts and the flush triggers |
+| 3 | shrink | `_TickSeam` docstring (7 lines) to 3; the `_kv_answer` docstring (10) to 4; the `_drive_ticks` docstring (9) to 4; `test_ema_first_reading_is_raw`'s docstring (4) to 2; `test_ema_smoothing_reduces_bounces`'s docstring (7) to 3 | tests/test_compaction.py | kept reasons: each witness's mutation stays in its docstring; the composed recipe stays in the `CO:` record at invariants/index.md:303 |
+- Narrow tests: tests/test_messages_routes.py, tests/test_stream_relay_commit.py, tests/test_context_overflow.py, tests/test_context_overflow_retry.py, tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py, tests/test_compaction.py
+- Green after U0: no file drops a unit — messages.py 341 -> ~318, dump.py 319 -> ~308 and test_compaction.py 451 -> ~430 all stay over 300, so every split unit below still runs; chat.py (299) has no over-long comment and no split unit.
+
+### U1 · buster_ripper/routes/messages.py: move the post-commit SSE relay into its own module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `_relay_after_commit`, `_note_message_start` | buster_ripper/routes/messages.py | buster_ripper/routes/stream_relay.py |
+- Importers to update: buster_ripper/routes/messages.py (import block only: `from .stream_relay import _relay_after_commit`; `find_message_start` leaves with the relay, `time`, `update_session_stats` and the rest stay)
+- Witnesses to re-point: none (`invariants/` names neither function; the only records naming them are the squashed session records)
+- Tests with import lines or patch targets to update: tests/test_stream_relay_commit.py (`messages_routes._relay_after_commit` at `:216` and `:233` -> the new module's function; the `messages_routes.update_session_stats` patch target at `:139` and `:252` -> the new module's `update_session_stats`)
+- Narrow tests: tests/test_stream_relay_commit.py
+
+### U2 · buster_ripper/routes/messages.py: reshape the two flagged handlers and dedupe the two answer arms
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | reshape | `handle_messages`: extract `_prepare_body(request, body) -> str` — normalize, compute the session id, strip/cache images, inject the preserved-thinking pair, log the changes; returns the session id | buster_ripper/routes/messages.py | buster_ripper/routes/messages.py |
+| 2 | reshape | `handle_streaming`: extract `_stream_overflow(result)` — the `isinstance(..., web.Response) and status >= 400` probe that decodes the relayed bytes and parses the overflow; the loop keeps its `continue`/400/`return result` arms | buster_ripper/routes/messages.py | buster_ripper/routes/messages.py |
+| 3 | reshape | `_stream_single_request`: extract `_upstream_answer(resp)` for the identical redirect and error answer blocks, and take one `if resp.status >= 300:` arm instead of two | buster_ripper/routes/messages.py | buster_ripper/routes/messages.py |
+| 4 | reshape | `_non_stream_single_request`: extract `_raise_context_overflow(content, input_tokens)` — the `status >= 400` probe and its token fallback — and `_note_non_stream_usage(request, sid, input_tokens, elapsed_ms)` — the usage record and its verbose line | buster_ripper/routes/messages.py | buster_ripper/routes/messages.py |
+- Importers to update: none
+- Witnesses to re-point: none
+- Tests with import lines or patch targets to update: none (the tests drive the route; only `dump_turn` is patched by path and it stays)
+- Calls today: `handle_messages` by tests/test_messages_routes.py (`TestMessagesRoute`, `TestDumpFailureIsolated`); `handle_streaming` by tests/test_context_overflow_retry.py (`TestStreamingOverflowRetry`); `_stream_single_request` by tests/test_stream_relay_commit.py (`TestPostCommitFaults`, `TestRelayBehaviour`) and tests/test_context_overflow_retry.py (`TestStreamingOverflowRetry`); `_non_stream_single_request` by tests/test_context_overflow_retry.py (`TestNonStreamingOverflowRetry`) and tests/test_messages_routes.py (`TestMessagesRoute`)
+- Narrow tests: tests/test_messages_routes.py, tests/test_context_overflow.py, tests/test_context_overflow_retry.py, tests/test_stream_relay_commit.py, tests/test_transport_parity.py
+
+### U3 · buster_ripper/routes/chat.py: reshape the handler and the eval transforms
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | reshape | `handle_chat`: extract `_chat_with_overflow_retry(request, body, headers, profile)` — the backend dispatch and SGLang retry loop — leaving `handle_chat` the parse, the request transforms, the headers and the call | buster_ripper/routes/chat.py | buster_ripper/routes/chat.py |
+| 2 | reshape | `_apply_request_transforms`: extract `_inject_eval_kwargs(body)` — the `profile.inject_chat_template_kwargs` block | buster_ripper/routes/chat.py | buster_ripper/routes/chat.py |
+| 3 | reshape | `_make_chat_request`: derive `session = request.app["session"]` inside the function and drop the `session` parameter (P:5 -> P:4); `_chat_with_overflow_retry` does the same, so `handle_chat` no longer reads the session | buster_ripper/routes/chat.py | buster_ripper/routes/chat.py |
+| 4 | test | add `test_eval_response_transforms_today` to tests/test_preserved_thinking.py — calls `_transform_eval_response` directly with the glm47 profile and pins today's `(content, fixed)` on the think-split, reasoning-copy and code-fence arms, before the reshape | tests/test_preserved_thinking.py | tests/test_preserved_thinking.py |
+| 5 | reshape | `_transform_eval_response`: drive the enabled transforms from a step list, each step `(msg, content) -> (content, changed)`, so the changed/fixed bookkeeping appears once; `_copy_reasoning_to_content` takes the ignored `content` parameter to share that shape | buster_ripper/routes/chat.py | buster_ripper/routes/chat.py |
+- Importers to update: none
+- Witnesses to re-point: none
+- Tests with import lines or patch targets to update: none (`chat_routes._prepare_headers` and `chat_routes._relay_chat_stream` stay in the module)
+- Calls today: `handle_chat` by tests/test_chat_routes.py (`TestChatRoute`); `_apply_request_transforms` by tests/test_preserved_thinking.py (`TestEvalChatTemplateKwargsGuard`); `_make_chat_request` by tests/test_chat_routes.py (`TestChatRoute`) and tests/test_stream_relay_commit.py (`TestChatPostCommit`); `_transform_eval_response` by tests/test_chat_routes.py (`test_chat_nonstream_compatible_json_transforms`) and tests/test_preserved_thinking.py, both through the route
+- Narrow tests: tests/test_chat_routes.py, tests/test_preserved_thinking.py, tests/test_context_overflow_retry.py, tests/test_upstream_answer_relay.py, tests/test_header_parity.py
+
+### U4 · buster_ripper/dump.py: move the body rendering into its own module
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `_render_tools`, `_system_text`, `_content_text`, `_render_body` | buster_ripper/dump.py | buster_ripper/dump_render.py |
+- Importers to update: buster_ripper/dump.py (import block only: `from .dump_render import _render_body`; `json` and `difflib` both stay, so `CL:buster_ripper.dump/import-topology` still holds)
+- Witnesses to re-point: invariants/index.md:144 and :145 (`repo:buster_ripper.dump#_render_body` -> `repo:buster_ripper.dump_render#_render_body`); invariants/buster_ripper/assumption-claims.md:122 and :136 (Subject), :125 and :139 (Source path), :128 and :142 (Invalidates-On path) -> `buster_ripper/dump_render.py`
+- Tests with import lines or patch targets to update: tests/test_dump.py:18, tests/test_dump_records.py:18 (`from buster_ripper.dump import _render_body` -> `from buster_ripper.dump_render import _render_body`); tests/test_dump_triggers.py (`dump._render_body` at `:110`, `:121`, `:140`, `:167` -> the new module's `_render_body`)
+- Narrow tests: tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py, tests/test_dump_write_count.py
+
+### U5 · buster_ripper/dump_render.py: extract the message section
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | reshape | `_render_body`: extract `_render_message(index, msg)` — the role read, the content text and the `[message i / role]` section | buster_ripper/dump_render.py | buster_ripper/dump_render.py |
+- Importers to update: none
+- Witnesses to re-point: none (the `_render_body` records re-pointed in U4 already name this module)
+- Tests with import lines or patch targets to update: none
+- Calls today: `_render_body` directly by tests/test_dump.py and tests/test_dump_records.py (`_render_body` imported at `:18` and called in the record and diff assertions)
+- Narrow tests: tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py
+
+### U6 · tests/test_compaction.py: split the poll and EMA-drift witnesses into their own modules
+| # | Kind | What | From | To |
+|---|---|---|---|---|
+| 1 | move | `test_poll_kv_cache_uses_session_get`, `test_poll_kv_cache_handles_metrics_error`, `test_poll_kv_cache_updates_global_cache`, `test_poll_kv_cache_uses_timeout`, `TestPollKvCacheWithSession` | tests/test_compaction.py | tests/test_compaction_poll.py |
+| 2 | move | `_TickSeam`, `_kv_answer`, `_settle`, `_drive_ticks`, `test_ema_first_reading_is_raw`, `test_ema_smoothing_reduces_bounces` | tests/test_compaction.py | tests/test_compaction_ema.py |
+- Importers to update: none (both new modules; the poll module pulls `asyncio`, `aiohttp`, `pytest`, `compaction`, the EMA module pulls `asyncio`, `contextlib`, `pytest`, `compaction`, `config`)
+- Witnesses to re-point: invariants/index.md:303 (the `CO:` producer parenthetical), invariants/buster_ripper/assumption-claims.md:3215 (Boundary), :3219 (Source; the poll citations split to tests/test_compaction_poll.py and the drift citations to tests/test_compaction_ema.py), :3223 and :3225 (Invalidates-On) -> tests/test_compaction_ema.py
+- Tests with import lines or patch targets to update: tests/test_compaction.py's import block (drops `asyncio`, `contextlib`, `aiohttp`, `pytest` and `config`; keeps `compact_token_count` and `should_nudge_compact`)
+- Narrow tests: tests/test_compaction.py, tests/test_compaction_poll.py, tests/test_compaction_ema.py (the two new modules are not selected by the brief's Verify command — run them explicitly)
+
+## U0 Forward
+- Moved: nothing
+- Reshaped: nothing
+- Files: buster_ripper/routes/messages.py, buster_ripper/dump.py, tests/test_compaction.py
+- Tests edited: none
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_stream_relay_commit.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_dump.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_compaction.py -o addopts=` -> 144 passed (after each row; 50, 73 and 21 passed for rows 1-3)
+- Ran: brief `Verify` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/routes/messages.py` — 318 lines (review: <=300), 30 trimmable full-line comments, 19 issues in 7 functions; top: `_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4. `buster_ripper/dump.py` — 308 lines (review: <=300), 5 trimmable full-line comments, 1 issue in 1 function: `_render_body` L:12 N:1 C:6 P:1
+- Sizes: buster_ripper/routes/messages.py: 318, buster_ripper/dump.py: 308, tests/test_compaction.py: 434
+- Noticed: messages.py's 19 function-level issues are unchanged pre-existing debt — the unit's U2 rows reshape them
+  Ask: no — U2 reshapes them
+- Noticed: dump.py's `_render_body` Medium Complexity is pre-existing — the unit's U5 row reshapes it
+  Ask: no — U5 reshapes it
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U0 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C` -> only `buster_ripper/routes/messages.py`, `buster_ripper/dump.py`, `tests/test_compaction.py` and the brief are changed; every changed line in the three code files is a comment, docstring line or blank line
+- Ran: `python -` (AST compare, docstrings stripped, working tree vs `HEAD`) for the three files -> identical AST for all three; every docstring that existed at `HEAD` still exists
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Scan: `buster_ripper/routes/messages.py` — 318 lines, 19 issues in 7 functions, same functions and metrics as the Safety net (`_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4); `buster_ripper/dump.py` — 308 lines, 1 issue in 1 function `_render_body` L:12 N:1 C:6 P:1; `tests/test_compaction.py` — 434 lines, 2 issues in 2 functions `test_poll_kv_cache_updates_global_cache` L:20 and `test_poll_kv_cache_uses_session_get` L:17. Nothing new, nothing worse
+- Sizes: buster_ripper/routes/messages.py: 318, buster_ripper/dump.py: 308, tests/test_compaction.py: 434
+- Findings: none
+- Noticed: tests/test_compaction.py ends at 434, 4 lines over the map's ~430 estimate (its `_TickSeam`/`_kv_answer` shrink targets were 7->3 and 10->4, delivered as 4 and 5, and row 1's token-fallback comment was already one line at `HEAD`); all three files stay over 300, so the split units are unaffected
+  Ask: no — the estimate was approximate and no unit is dropped
+- Noticed: messages.py's 19 function-level issues and dump.py's `_render_body` Medium Complexity are unchanged pre-existing debt — the unit's U2/U5 rows reshape them
+  Ask: no — later units own them
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U1 Forward
+- Moved: `_relay_after_commit`, `_note_message_start` -> buster_ripper/routes/stream_relay.py (cut and pasted byte-identical, AST-compared against `HEAD`; new module: one-line docstring, `time`, `config`, `update_session_stats`, `find_message_start`)
+- Reshaped: nothing
+- Files: buster_ripper/routes/messages.py, buster_ripper/routes/stream_relay.py (new), tests/test_stream_relay_commit.py
+- Tests edited: tests/test_stream_relay_commit.py: import `from buster_ripper.routes import messages as messages_routes` -> `from buster_ripper.routes import stream_relay` (it had no remaining use); patch targets `messages_routes.update_session_stats` at :139 and :252 and `messages_routes._relay_after_commit` at :216 and :233 -> `stream_relay.*` — no assertion changed
+- Ran: `.venv/bin/python -m pytest tests/test_stream_relay_commit.py -o addopts=` -> 16 passed
+- Ran: brief `Verify` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/routes/messages.py` — 17 issues in 5 functions (Deep Nesting 2, High Complexity 1, Long Function 2, Medium Complexity 2, Medium Length 3, Medium Nesting 3, Medium Parameters 4); top: `_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4; no file-size finding (was 318, now 280). `buster_ripper/routes/stream_relay.py` — 2 issues in 2 functions (Medium Length 1, Medium Parameters 1): `_note_message_start` L:16 N:1 C:4 P:3 (Medium Length), `_relay_after_commit` L:9 N:1 C:3 P:4 (Medium Parameters)
+- Sizes: buster_ripper/routes/messages.py: 280, buster_ripper/routes/stream_relay.py: 45
+- Noticed: the two issues the scan prints in stream_relay.py are the same two the moved functions carried at `HEAD` (`_note_message_start` Medium Length, `_relay_after_commit` Medium Parameters) — debt that moved, and no unit row reshapes it
+  Ask: no — text-only move, later rows own the reshapes
+- Noticed: messages.py's 17 remaining function issues are the pre-existing debt U2 reshapes
+  Ask: no — U2 owns them
+- Noticed: tests/test_transport_parity.py:17's module docstring names `_relay_after_commit` without a module path — prose, not an import line or patch target, so left alone
+  Ask: no — a comment cannot change behaviour
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U1 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/routes/messages.py`, the new `buster_ripper/routes/stream_relay.py`, `tests/test_stream_relay_commit.py` and the brief changed; `messages.py`'s diff is one removed import (`find_message_start`, which moved), one added import (`from .stream_relay import _relay_after_commit`) and the two removed definitions, nothing else
+- Ran: `git show HEAD:buster_ripper/routes/messages.py` vs `buster_ripper/routes/stream_relay.py` (byte diff + AST dump of both definitions) -> `_relay_after_commit` and `_note_message_start` byte-identical and AST-identical; the new file's only added lines are its one-line docstring and its imports; `_relay_after_commit`'s sole call site (`messages.py:175`) is unchanged
+- Ran: `git diff -- tests/test_stream_relay_commit.py` -> five changed lines, all module-path updates (the `messages_routes` import and the four `messages_routes.*` references at :139, :216, :233, :252); no assertion, no test body changed
+- Ran: `.venv/bin/python -m pytest tests/test_stream_relay_commit.py -o addopts=` -> 16 passed
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 364 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync; `codify knowledge check --profile strict` -> 5 diagnostics, all pre-existing (`invariants/` is untouched by this unit)
+- Scan: `buster_ripper/routes/messages.py` — 17 issues in 5 functions (Deep Nesting 2, High Complexity 1, Long Function 2, Medium Complexity 2, Medium Length 3, Medium Nesting 3, Medium Parameters 4): `_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4; `buster_ripper/routes/stream_relay.py` — 2 issues in 2 functions (Medium Length 1, Medium Parameters 1): `_note_message_start` L:16 N:1 C:4 P:3, `_relay_after_commit` L:9 N:1 C:3 P:4; no file-size finding on either. Together 19 issues in 7 functions, the same set and metrics as the Safety net — `_relay_after_commit`'s L:9 N:1 C:3 P:4 is unchanged, and nothing is printed that the Safety net did not already print
+- Sizes: buster_ripper/routes/messages.py: 280, buster_ripper/routes/stream_relay.py: 45
+- Findings: none
+- Noticed: `invariants/buster_ripper/assumption-claims.md:2850` names `_relay_after_commit` in the `CO:client-response-to-relay-consumer/payload-and-header-pairing` `Counterexample:` prose with `messages.py:170-197`; that range was already stale at `HEAD` (the function then sat at :196-213) and now names a file it has left, but no `Subject:`/`Source:`/`Invalidates-On:` line names either moved function, the sync preview is `current`, and the check adds no diagnostic
+  Ask: no — documentation prose only, no runtime or write path affected
+- Noticed: `codify knowledge check --profile strict` reports 5 pre-existing diagnostics (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`) — none in a file this unit touched
+  Ask: no — pre-existing registry debt outside this unit's files
+
+## U2 Forward
+- Moved: nothing
+- Reshaped: `handle_messages`: the normalize/session-id/image-strip/preserved-thinking/log-changes block moved verbatim to `_prepare_body(request, body) -> str`, which returns the session id; dump, headers and dispatch stay. `handle_streaming`: the `isinstance(..., web.Response) and status >= 400` probe moved to `_stream_overflow(result)`, which returns the parsed overflow or None; the loop keeps its `continue`/400/`return result` arms. `_stream_single_request`: the identical redirect and error relay blocks became one `if resp.status >= 300:` arm calling `_upstream_answer(resp)`. `_non_stream_single_request`: the `>= 400` probe and its token fallback moved to `_raise_context_overflow(content, input_tokens)`; the usage record and its verbose line moved to `_note_non_stream_usage(request, sid, input_tokens, elapsed_ms)`
+- Files: buster_ripper/routes/messages.py
+- Tests edited: none
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_stream_relay_commit.py tests/test_transport_parity.py -o addopts=` -> 60 passed at baseline and after each of rows 1-4
+- Ran: brief `Verify` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/routes/messages.py` — 17 total issues in 8 functions (Medium Complexity 1, Medium Length 5, Medium Nesting 5, Medium Parameters 4); two near tolerance (Complexity and Nesting: `_prepare_body`; Nesting and Parameters: `_note_non_stream_usage`); top: `_stream_single_request` L:25 N:2 C:3 P:4, `_non_stream_single_request` L:24 N:2 C:3 P:4, `handle_streaming` L:23 N:2 C:6 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4, `handle_messages` L:16 N:1 C:5 P:1; no file-size finding
+- Sizes: buster_ripper/routes/messages.py: 300
+- Noticed: the reshaped functions' metrics all fell (`handle_messages` L:28 N:2 C:12 P:1 -> L:16 N:1 C:5 P:1, `handle_streaming` L:25 N:3 C:8 -> L:23 N:2 C:6, `_stream_single_request` L:35 N:2 C:4 -> L:25 N:2 C:3, `_non_stream_single_request` L:34 N:4 C:8 -> L:24 N:2 C:3), but the extracted blocks carry their nesting into three new functions: `_prepare_body` L:14 N:2 C:8 P:2 (Medium Complexity and Nesting), `_note_non_stream_usage` L:7 N:2 C:3 P:4 (Medium Nesting and Parameters), `_raise_context_overflow` L:5 N:2 C:4 P:2 (Medium Nesting)
+  Ask: no — debt that moved with the extracted text; the map's rows end at these extractions and no later unit reshapes them
+- Noticed: messages.py ends at exactly 300 lines, the review bound; to stay there without touching a code line the two relay-arm comments were merged into one and `_note_non_stream_usage`'s parameter annotations were dropped
+  Ask: no — comment/annotation text only, no behavior or caller changed
+- Noticed: `handle_messages` is still printed for Medium Length (L:16) and `handle_non_streaming` is unchanged at L:21 N:2 C:5 P:4; no unit row reshapes either
+  Ask: no — pre-existing threshold debt outside the map's rows
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U2 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/routes/messages.py` and the brief changed; the file's 92 added and 72 removed lines all sit inside the four reshape rows — no test, invariant or other production file touched
+- Ran: `git show HEAD:buster_ripper/routes/messages.py` vs the working tree (AST per top-level function) -> `_inject_preserved_thinking`, `_request_payload` and `handle_non_streaming` unchanged; only `handle_messages`, `handle_streaming`, `_stream_single_request` and `_non_stream_single_request` changed, and the five added names are exactly the map's helpers (`_prepare_body`, `_stream_overflow`, `_upstream_answer`, `_raise_context_overflow`, `_note_non_stream_usage`)
+- Ran: block-by-block text compare against `HEAD` -> row 1's block verbatim in `_prepare_body` plus `return sid`; row 2's decode/parse probe verbatim in `_stream_overflow`, with the loop's `continue`/400/`return result` arms textually unchanged; row 3's two identical `web.Response(...)` constructions verbatim in `_upstream_answer`, behind one `if resp.status >= 300:` arm (`300 <= status < 400` plus `status >= 400` is the same set); row 4's overflow probe and token fallback verbatim in `_raise_context_overflow`, the usage record and verbose line verbatim in `_note_non_stream_usage`. `normalize` returns the same dict it mutates, so `_prepare_body`'s rebinding cannot drop the caller's body
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 364 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync; `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1 recorded (`invariants/` is untouched by this unit)
+- Scan: `codify scan path buster_ripper/routes/messages.py` -> 17 issues in 8 functions (Medium Complexity 1, Medium Length 5, Medium Nesting 5, Medium Parameters 4; near tolerance 2): `_stream_single_request` L:25 N:2 C:3 P:4, `_non_stream_single_request` L:24 N:2 C:3 P:4, `handle_streaming` L:23 N:2 C:6 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4, `handle_messages` L:16 N:1 C:5 P:1; no file-size finding. Every function the Safety net printed improved or held (`handle_non_streaming` unchanged; the other four lower L, N or C), 17 issues against the Safety net's 19, and the only names printed that the Safety net did not are the map's own helpers: `_prepare_body` L:14 N:2 C:8 P:2 (near tolerance Complexity and Nesting), `_note_non_stream_usage` L:7 N:2 C:3 P:4 (near tolerance Nesting and Parameters), `_raise_context_overflow` L:5 N:2 C:4 P:2; `_stream_overflow` and `_upstream_answer` are clean
+- Sizes: buster_ripper/routes/messages.py: 300
+- Findings: none
+- Noticed: `messages.py` ends at exactly 300 lines, the review bound; the two relay-arm comments were merged into one and `_note_non_stream_usage`'s parameter annotations were dropped to stay there without touching a code line
+  Ask: no — comment and annotation text only, no behavior or caller changed
+- Noticed: the three map-named helpers the scan prints carry the nesting of the blocks they came from; the map's rows end at these extractions and no later unit reshapes them
+  Ask: no — debt that moved with the extracted text, and the map has no further row
+- Noticed: the `handle_messages/dump-failure-isolation` assumption record's `Source: buster_ripper/routes/messages.py:55-59` no longer matches the dump block, now at `:37-41`; the range was already stale at `HEAD` (`:57-61`, after U0's comment shrink), the `Subject:` path is unchanged, and the sync preview stays `current`
+  Ask: no — a stale line reference in prose, no runtime or write-path effect
+- Noticed: `codify knowledge check --profile strict` reports 5 pre-existing diagnostics (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`) — none in a file this unit touched
+  Ask: no — pre-existing registry debt outside this unit's files
+
+## U3 Forward
+- Moved: nothing
+- Reshaped: `handle_chat`: the backend dispatch and SGLang retry loop moved verbatim to `_chat_with_overflow_retry(request, body, headers, profile)`, leaving the parse, the transforms, the headers and the call. `_apply_request_transforms`: the `profile.inject_chat_template_kwargs` block moved verbatim to `_inject_eval_kwargs(body)`, still inside the same `try`. `_make_chat_request`: reads `session = request.app["session"]` itself and drops the `session` parameter (P:5 -> P:4); `_chat_with_overflow_retry` no longer reads the session, so `handle_chat` does not either. `_transform_eval_response`: drives the enabled transforms from a step list (`_strip_think_block` always, the other two by profile flag), assigning `content, changed = step(msg, content)` and `fixed = fixed or changed` once; `_copy_reasoning_to_content` takes the ignored `content` parameter and returns it on its two no-change paths
+- Files: buster_ripper/routes/chat.py, tests/test_preserved_thinking.py
+- Tests edited: tests/test_preserved_thinking.py: one import line (`from buster_ripper.routes.chat import _transform_eval_response`) and the map's new `test_eval_response_transforms_today` (pins `(content, fixed)` on the think-split, reasoning-copy and code-fence arms plus both `fixed` passthroughs; written and run green before the row-5 reshape) — no assertion changed, no test deleted, skipped or weakened
+- Ran: `.venv/bin/python -m pytest tests/test_chat_routes.py tests/test_preserved_thinking.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_header_parity.py -o addopts=` -> 129 passed at baseline and after rows 1-3, 130 passed after rows 4-5
+- Ran: brief `Verify` -> 365 passed, 2 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/routes/chat.py` — 12 issues in 8 functions (Medium Complexity 2, Medium Length 2, Medium Nesting 5, Medium Parameters 3); no file-size finding. Printed: `_chat_with_overflow_retry` L:19 N:2 C:5 P:4 (Medium Length, Medium Nesting, Medium Parameters), `_make_chat_request` L:16 N:2 C:3 P:4 (Medium Length, Medium Nesting, Medium Parameters), `_apply_response_transforms` L:12 N:2 C:5 P:2 (Medium Nesting), `_apply_request_transforms` L:11 N:1 C:6 P:2 (Medium Complexity), `_transform_cc_response` L:10 N:2 C:4 P:3 (Medium Nesting), `_transform_eval_response` L:9 N:1 C:5 P:4 (Medium Parameters)
+- Sizes: buster_ripper/routes/chat.py: 298
+- Noticed: `_make_chat_request` went L:15 -> L:16 because row 3 adds the session read it asks for; its parameters did drop P:5 -> P:4, but the third medium factor moves it out of the scan's near-tolerance bucket into three counted issues
+  Ask: no — the row's own instruction, no behavior change
+- Noticed: `_chat_with_overflow_retry` L:19 N:2 C:5 P:4 and `_transform_eval_response`'s unchanged P:4 carry the retry loop's and the signature's shape; the map's rows end at these extractions and no later unit reshapes them
+  Ask: no — debt that moved with the extracted text, and the map has no further row
+- Noticed: `invariants/buster_ripper/assumption-claims.md:373` still says the session is "read at :37, passed into `_make_chat_request`"; row 3 makes it read inside `_make_chat_request` at `:151`. The unit names no witness to re-point and no `Subject:`/`Source:`/`Invalidates-On:` line names the changed read
+  Ask: no — prose describing an unchanged single-session read, no runtime or write-path effect
+- Noticed: `invariants/index.md:174`'s `chat.py:146` locator for `upstream-json-parse-error-response` now points at `_make_chat_request`'s signature line rather than a 502 arm; the claim's `resp.json()` premise was already stale at `HEAD` (recorded in the squashed session's claims.md:3677)
+  Ask: no — a stale prose locator in a record the unit was told not to re-point
+- Noticed: `codify knowledge check --profile strict` reports the same 5 pre-existing diagnostics U1/U2 recorded (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`)
+  Ask: no — pre-existing registry debt outside this unit's files
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U3 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/routes/chat.py`, `tests/test_preserved_thinking.py` and the brief changed; chat.py's 31 added and 32 removed lines all sit inside the five reshape rows (no import, docstring or comment line touched), and the test diff is one added import plus the map's new class
+- Ran: `git show HEAD:buster_ripper/routes/chat.py` vs the working tree (AST per top-level function) -> the 16 untouched functions are AST-identical; only `handle_chat`, `_apply_request_transforms`, `_make_chat_request`, `_copy_reasoning_to_content` and `_transform_eval_response` changed, and the two added names are exactly the map's helpers (`_chat_with_overflow_retry`, `_inject_eval_kwargs`)
+- Ran: block-by-block text compare against `HEAD` -> row 1's dispatch and retry loop verbatim in `_chat_with_overflow_retry` once the `session` argument is dropped; row 2's injection block verbatim in `_inject_eval_kwargs`, still inside the same `try`; row 3 is only the parameter drop plus `session = request.app["session"]` at `:153`; row 5's `_copy_reasoning_to_content` adds the `content` parameter and returns it on its two no-change paths, and `_transform_eval_response`'s step list keeps the strip-think, copy-reasoning, strip-fence order with `fixed = fixed or changed`
+- Ran: `python -` (old vs new `_transform_eval_response` over every profile, `fixed` False/True and 11 message shapes, including the new test's five) -> identical `(content, fixed)` and identical `msg` mutation in every case reachable from `_apply_response_transforms`; the only divergence is a caller passing a `content` argument that differs from `msg["content"]`, which no caller does
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 365 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync; `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1/U2 recorded (`invariants/` is untouched by this unit)
+- Scan: `codify scan path buster_ripper/routes/chat.py` -> 12 issues in 8 functions (Medium Complexity 2, Medium Length 2, Medium Nesting 5, Medium Parameters 3); `_chat_with_overflow_retry` L:19 N:2 C:5 P:4, `_make_chat_request` L:16 N:2 C:3 P:4, `_apply_response_transforms` L:12 N:2 C:5 P:2, `_apply_request_transforms` L:11 N:1 C:6 P:2, `_transform_cc_response` L:10 N:2 C:4 P:3, `_transform_eval_response` L:9 N:1 C:5 P:4, `_copy_reasoning_to_content` L:9 N:1 C:6 P:2, `_raise_chat_overflow` L:8 N:2 C:5 P:2; no file-size finding
+- Sizes: buster_ripper/routes/chat.py: 298
+- Findings: none
+- Noticed: `_make_chat_request` moved L:15 N:2 C:3 P:5 (2 issues, near tolerance) -> L:16 N:2 C:3 P:4 (3 issues): row 3's own `session = request.app["session"]` line crosses Medium Length while the parameters dropped as the row asks; every other function the Safety net printed held or improved (`handle_chat` clean, `_apply_request_transforms` 3 -> 1 issue, `_transform_eval_response` 3 -> 1, `_apply_response_transforms` and `_transform_cc_response` unchanged), and the file fell 299 -> 298 lines and 14 -> 12 issues
+  Ask: no — the map's row directs the read inside the function and discloses the trade; no behaviour or caller changed
+- Noticed: the scan prints one new map helper, `_chat_with_overflow_retry` L:19 N:2 C:5 P:4, which carries the retry loop's shape; `_inject_eval_kwargs` is clean
+  Ask: no — debt that moved with the extracted text, and the map's rows end at these extractions
+- Noticed: `_transform_eval_response`'s code-fence step now takes the evolving `content` instead of `msg.get("content")`; both callers (`_apply_response_transforms` and the new test) pass matching values, so the old and new functions agree on every reachable input
+  Ask: no — no caller passes a mismatched pair, and the map's step shape is `(msg, content) -> (content, changed)`
+- Noticed: `invariants/buster_ripper/assumption-claims.md:373` still says the session is "read at :37, passed into `_make_chat_request`"; the read now happens inside `_make_chat_request` at `:153`, and ":37" was already stale at `HEAD` (the read was at `:43`). No `Subject:`/`Source:`/`Invalidates-On:` line names the changed read, and the sync preview stays `current`
+  Ask: no — prose describing an unchanged single-session read, no runtime or write-path effect
+- Noticed: `invariants/index.md:174`'s `chat.py:146` locator for `upstream-json-parse-error-response` was already stale at `HEAD` (line 146 was the payload line) and now lands on a blank line after `_chat_payload`; the claim's `resp.json()` premise was already stale at `HEAD` (recorded in the squashed session's claims.md:3677)
+  Ask: no — a stale prose locator in a record the unit was told not to re-point
+- Noticed: the map's "Calls today" for `_apply_request_transforms` and `_make_chat_request` names tests that drive the route rather than importing them directly; both are still exercised through the route (`TestEvalChatTemplateKwargsGuard`, `TestChatRoute`, `TestChatPostCommit`), so no caller changed
+  Ask: no — map prose only, no code or test changed by this
+- Noticed: `codify knowledge check --profile strict` reports the same 5 pre-existing diagnostics U1/U2 recorded (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`)
+  Ask: no — pre-existing registry debt outside this unit's files
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U4 Forward
+- Moved: `_render_tools`, `_system_text`, `_content_text`, `_render_body` -> buster_ripper/dump_render.py (cut and pasted byte-identical, `diff`-verified against `HEAD`'s dump.py:42-84; new module: one-line docstring, `import json`)
+- Reshaped: nothing
+- Files: buster_ripper/dump.py, buster_ripper/dump_render.py (new), tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py, invariants/index.md, invariants/buster_ripper/assumption-claims.md
+- Tests edited: tests/test_dump.py:18 and tests/test_dump_records.py:18 `from buster_ripper.dump import _render_body, dump_turn` -> `from buster_ripper.dump import dump_turn` + `from buster_ripper.dump_render import _render_body`; tests/test_dump_triggers.py:17 adds `dump_render` to the `from buster_ripper import ...` line and `dump._render_body` -> `dump_render._render_body` at :110, :121, :140, :167 — no assertion changed
+- Ran: `.venv/bin/python -m pytest tests/test_dump.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py -o addopts=` -> 83 passed (also 83 at baseline)
+- Ran: brief `Verify` -> 365 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/dump.py` — scan clean (was 308 lines with 1 issue in 1 function, `_render_body` L:12 N:1 C:6 P:1; now under the review bound with no issue). `buster_ripper/dump_render.py` — 1 issue in 1 function: `_render_body` L:12 N:1 C:6 P:1 (Medium Complexity)
+- Sizes: buster_ripper/dump.py: 264, buster_ripper/dump_render.py: 48
+- Noticed: dump_render.py's `_render_body` L:12 N:1 C:6 P:1 is the same issue the Safety net printed for dump.py's `_render_body` — debt that moved, and U5 reshapes it
+  Ask: no — U5 owns the reshape
+- Noticed: the two re-pointed claim IDs still read `CL:buster_ripper.dump#_render_body/...` while their `repo:` subject now names `buster_ripper.dump_render`; the map named only the `repo:` token, and the `CL:` id is the claim's stable identity (also used in assumption-claims.md's `Claim:` lines and the generated index)
+  Ask: no — a claim id is a registry identity, not a code path; nothing reads it at runtime
+- Noticed: the re-pointed `Source:` line ranges (`buster_ripper/dump_render.py:49-80` and `:67-80`) no longer match where the moved functions sit (`_render_body` is now :31-48); the map said change the path only, so the ranges were left as written
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: `codify knowledge sync-registry --apply` reports `already-current`; `codify knowledge check --profile strict` reports the same 5 pre-existing diagnostics U1/U2/U3 recorded (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`)
+  Ask: no — pre-existing registry debt outside this unit's files
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U4 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/dump.py`, the new `buster_ripper/dump_render.py`, `tests/test_dump.py`, `tests/test_dump_records.py`, `tests/test_dump_triggers.py`, `invariants/index.md`, `invariants/buster_ripper/assumption-claims.md` and the brief changed; `dump.py`'s diff is one added import (`from .dump_render import _render_body`) and the four removed definitions, nothing else (`json` and `difflib` stay, both still used at `:122`/`:180` and `:214`); the invariant diff is exactly the listed witness lines, path-only (two `repo:` tokens in index.md, two `Subject:`, two `Source:`, two `Invalidates-On:` in assumption-claims.md); the test diff is three import lines plus the four `dump._render_body` -> `dump_render._render_body` references at `:110`, `:121`, `:140`, `:167`, no assertion changed
+- Ran: `git show HEAD:buster_ripper/dump.py | sed -n '42,84p'` vs `buster_ripper/dump_render.py:6-48` (`diff -u`) -> byte-identical; the new file's only other lines are its one-line docstring and `import json`, and `dump.py`'s sole call (`_render_body` at `:50`) is unchanged
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 365 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync; `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1/U2/U3 recorded (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md:24` and `:43`), none on a line this unit changed
+- Scan: `codify scan path buster_ripper/dump.py buster_ripper/dump_render.py` -> `dump.py` clean (was 1 issue in 1 function, `_render_body` L:12 N:1 C:6 P:1; no file-size finding); `dump_render.py` 1 issue in 1 function: `_render_body` L:12 N:1 C:6 P:1 (Medium Complexity) — the same function and metrics the Safety net printed, now under its new module; nothing new, nothing worse
+- Sizes: buster_ripper/dump.py: 264, buster_ripper/dump_render.py: 48 (`wc -l`; the scan raises no file-size finding for either, so both are under the 300 review bound)
+- Findings: none
+- Noticed: `dump_render.py`'s `_render_body` L:12 N:1 C:6 P:1 is the same issue the Safety net printed for `dump.py`'s `_render_body` — debt that moved; U5 reshapes it
+  Ask: no — U5 owns the reshape
+- Noticed: the two re-pointed claim IDs still read `CL:buster_ripper.dump#_render_body/...` while their `repo:` subject now names `buster_ripper.dump_render`; the map named only the `repo:` token, and the `CL:` id is the claim's stable identity (also used in assumption-claims.md's `Claim:` lines and the generated index)
+  Ask: no — a claim id is a registry identity, not a code path; nothing reads it at runtime
+- Noticed: the re-pointed `Source:` ranges (`buster_ripper/dump_render.py:49-80` and `:67-80`) no longer match where the moved code sits (`_render_body` is at `:31-48`, its message loop at `:43-46`); the map said change the path only, so the ranges were left as written
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: `invariants/buster_ripper/assumption-claims.md:80`'s `dump_turn/turn-diff-record-form` `Actual:` still cites `_render_body(body)` at `dump.py:77`; that call is now `dump.py:50` and the function lives in `dump_render.py`, but its `Subject:` names `dump_turn` (unchanged), the claim's premise still holds, and the sync preview stays `current`
+  Ask: no — stale prose line reference, no runtime or write-path effect
+
+## U5 Forward
+- Moved: nothing
+- Reshaped: `_render_body`: the per-message role read, the content text and the `[message i / role]` section moved verbatim to `_render_message(index, msg)` — same three lines, the map's `i` renamed to `index` in the signature and the f-string only; the loop keeps its `enumerate` and appends the helper's result
+- Files: buster_ripper/dump_render.py
+- Tests edited: none
+- Ran: `.venv/bin/python -m pytest tests/test_dump.py tests/test_dump_records.py tests/test_dump_triggers.py -o addopts=` -> 73 passed at baseline and after the row
+- Ran: brief `Verify` -> 365 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync (its output repeats the two pre-existing `## Handle Index`/`## Entity Index` curated-section errors at `invariants/index.md:24` and `:43`)
+- Scan: `buster_ripper/dump_render.py` — 1 issue in 1 function: `_render_body` L:10 N:1 C:6 P:1 (Medium Complexity); `_render_message` clean; no file-size finding
+- Sizes: buster_ripper/dump_render.py: 53
+- Noticed: `_render_body`'s Medium Complexity holds at C:6 (L:12 -> L:10) — the three `or` defaults and the two section `if`s stay in the function, and the map's row ends at this extraction
+  Ask: no — the row was followed as written and no later unit reshapes it
+- Noticed: U4's stale `Source:` ranges in `invariants/buster_ripper/assumption-claims.md` (`dump_render.py:49-80` and `:67-80`) now sit 5 lines further off after the insertion at `:31`; this unit names no witness to re-point and the sync preview stays `current`
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U5 Yield
+- Verdict: ACCEPT
+- Ran: `git status --porcelain` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/dump_render.py` and the brief changed; the file's 11 added and 3 removed lines are the helper definition and the loop's replaced append, nothing else (no import, docstring or other production line touched)
+- Ran: `git show HEAD:buster_ripper/dump_render.py` vs the working tree -> the three removed lines (`role = ...`, `content_text = ...`, `parts.append(f"[message {i} / {role}]\n{content_text}")`) reappear verbatim as `_render_message`'s body dedented, with `parts.append(` -> `return ` and `{i}` -> `{index}`, and the call site passes `i` as `index`; `_render_body`'s signature `(body: dict) -> str` is unchanged, its callers (`dump.py:50`, tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py) are unchanged, and tests/test_dump.py:145 calls it directly
+- Ran: `python -` (old vs new `_render_body` over six bodies: empty, no messages, single user, multi-message with block content, tools+system+missing-role/None content, empty-tools) -> identical output on every one
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 365 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped; the +1 is U3's map-named characterization test)
+- Scan: `codify scan path buster_ripper/dump_render.py` -> 1 issue in 1 function: `_render_body` L:10 N:1 C:6 P:1 (Medium Complexity); `_render_message` is clean and not printed; no file-size finding. The Safety net's `_render_body` (L:12 N:1 C:6 P:1) is the same function, shorter by two lines, and nothing new is printed
+- Sizes: buster_ripper/dump_render.py: 53
+- Findings: none
+- Noticed: `_render_body`'s Medium Complexity holds at C:6 (L:12 -> L:10) — the three `or` defaults and the two section `if`s stay in the function; the map's row ends at this extraction and no later unit reshapes it
+  Ask: no — the row was followed as written
+- Noticed: U4's `Source:` ranges in `invariants/buster_ripper/assumption-claims.md` (`dump_render.py:49-80` and `:67-80`) now sit further off after the insertion at `:31` (`_render_body` is at `:38-53`); this unit re-points no witness, the `Subject:` paths are unchanged, and the Forward's sync preview is `current`
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: tests/test_server_hooks.py's two never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U6 Forward
+- Moved: `test_poll_kv_cache_uses_session_get`, `test_poll_kv_cache_handles_metrics_error`, `test_poll_kv_cache_updates_global_cache`, `test_poll_kv_cache_uses_timeout`, `TestPollKvCacheWithSession` -> tests/test_compaction_poll.py (cut and pasted byte-identical, `diff`-verified against `HEAD`'s test_compaction.py:181-344, with their two section headers)
+- Moved: `_TickSeam`, `_kv_answer`, `_settle`, `_drive_ticks`, `test_ema_first_reading_is_raw`, `test_ema_smoothing_reduces_bounces` -> tests/test_compaction_ema.py (cut and pasted byte-identical, `diff`-verified against `HEAD`'s test_compaction.py:347-434, with its section header)
+- Reshaped: nothing
+- Files: tests/test_compaction.py, tests/test_compaction_poll.py (new), tests/test_compaction_ema.py (new), invariants/index.md, invariants/buster_ripper/assumption-claims.md
+- Tests edited: tests/test_compaction.py's import block drops `asyncio`, `contextlib`, `aiohttp`, `pytest`, `compaction` and `config`, keeping `from buster_ripper.compaction import compact_token_count, should_nudge_compact, CompactionConfig` (textually the line that was already at `HEAD:10`); the two new modules get one-line docstrings and their imports — no assertion changed, no test deleted, skipped or weakened
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py -o addopts= -q` -> 21 passed at baseline
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py tests/test_compaction_poll.py -o addopts= -q` -> 21 passed after row 1 (an intermediate rewrite dropped the not-yet-moved EMA block, so 2 failed with `NameError: name 'compaction' is not defined`; the block was restored verbatim from `HEAD`, re-diffed identical and re-run green before row 2)
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py tests/test_compaction_poll.py tests/test_compaction_ema.py -o addopts= -q` -> 21 passed after row 2 and as the final narrow run
+- Ran: brief `Verify` -> 356 passed, 3 pre-existing RuntimeWarnings + 7 passed (U5's 365 minus the 9 moved tests, which `tests/test_compaction.py` no longer collects)
+- Ran: `codify knowledge sync-registry --apply` -> `already-current` (its output repeats the two pre-existing `## Handle Index`/`## Entity Index` curated-section errors at `invariants/index.md:24` and `:43`); `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1-U5 recorded (three `missing-version` records; the two curated-section errors), none on a line this unit changed
+- Scan: `tests/test_compaction.py` — scan clean (was 434 lines with 2 issues in 2 functions: `test_poll_kv_cache_updates_global_cache` L:20, `test_poll_kv_cache_uses_session_get` L:17). `tests/test_compaction_poll.py` — 2 issues in 2 functions (Medium Length 2): `test_poll_kv_cache_updates_global_cache` L:20 N:0 C:2 P:1, `test_poll_kv_cache_uses_session_get` L:17 N:0 C:2 P:1 — the same two functions and metrics the Safety net printed, now under their new module. `tests/test_compaction_ema.py` — scan clean
+- Sizes: tests/test_compaction.py: 171, tests/test_compaction_poll.py: 173, tests/test_compaction_ema.py: 99
+- Noticed: the poll module's two Medium Length issues are the same two the Safety net printed in tests/test_compaction.py, moved with their text; the map's rows end at the split and no later unit reshapes them
+  Ask: no — text-only move, and the map has no further row
+- Noticed: the map's poll import list includes `pytest`, which no moved poll line references, so it was left out; the map's EMA import list omits `aiohttp`, which `_TickSeam` (`aiohttp.ClientError`) and `_drive_ticks` (`spec=aiohttp.ClientSession`) do reference, so it was added — without it the moved code raises `NameError`
+  Ask: no — import lines only, required for the moved text to run
+- Noticed: the three section headers (`# ── poll_kv_cache behavioral tests`, `# ── Session parametric tests`, `# ── EMA smoothing tests`) moved with their blocks so neither module carries an orphaned header
+  Ask: no — comment text only, no test or assertion changed
+- Noticed: the re-pointed `Source:` citations (`tests/test_compaction_poll.py:183-209`, `:212-227`, `:230-258`, `:261-283`, `:288-344`, `tests/test_compaction_ema.py:349-368`, `:371-388`, `:391-394`, `:397-420`, `:423-433`, `:436-451`) and the `:3223`/`:3225` line ranges keep the pre-split numbering; the map said change the path only, so they now point past the ends of the new files (`test_compaction_poll.py` is 173 lines, `test_compaction_ema.py` 99)
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: the composition's `Fingerprint:` at invariants/buster_ripper/assumption-claims.md:3220 still lists `ae79036b7fe714c2… tests/test_compaction.py` as a consulted source, and the `:3225` Invalidates-On keys on that digest; the split changes the file's bytes, so the digest and the source list no longer describe the witness side. The map named only the Boundary/Source/Invalidates-On lines, not the Fingerprint
+  Ask: no — a registry digest and prose, nothing reads it at runtime and no user-visible result changes
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U6 Yield
+- Verdict: ACCEPT
+- Ran: `git status --porcelain` + `git diff -M -C --no-ext-diff` -> only `tests/test_compaction.py`, the new `tests/test_compaction_poll.py` and `tests/test_compaction_ema.py`, `invariants/index.md`, `invariants/buster_ripper/assumption-claims.md` and the brief changed; `tests/test_compaction.py`'s diff is 7 dropped import lines and the removal of the two moved blocks (256 lines), with no other line changed; the invariant diff is exactly the map's five witness lines (`invariants/index.md:303`; `assumption-claims.md:3215` Boundary, `:3219` Source, `:3223` and `:3225` Invalidates-On), and each is path-only (two of them insert a path token where the original relied on the preceding path)
+- Ran: `git show HEAD:tests/test_compaction.py` ranges vs the new modules (`sed -n '181,344p'` vs `tests/test_compaction_poll.py:10-173`, `sed -n '347,434p'` vs `tests/test_compaction_ema.py:12-99`) -> byte-identical (164 and 88 lines, including their three section headers); the new files' only other lines are one module docstring and their imports; the current `tests/test_compaction.py` equals `HEAD` lines 1-2 + 10-178, so the only removed content is the 7 import lines and the two moved blocks (plus the two blank separator lines), and no test or assertion line was lost
+- Ran: test-name compare against `HEAD` -> 21 names at `HEAD`, 21 now (12 in `tests/test_compaction.py`, 7 in `tests/test_compaction_poll.py`, 2 in `tests/test_compaction_ema.py`), identical set; no `skip`/`xfail` anywhere
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py tests/test_compaction_poll.py tests/test_compaction_ema.py -o addopts= -q` -> 21 passed (the baseline 21)
+- Ran: brief `Verify` -> 356 passed, 3 pre-existing RuntimeWarnings + 7 passed; 356 is the Safety net's 364 minus exactly the 9 moved tests the command no longer selects (the map's U6 "Narrow tests" line says so), and with the two new modules' 21 passed the union is 365, U5's total, so no test disappeared
+- Ran: `uv run pytest` (`Final verify`) -> 576 passed, coverage 96.70% (bound 80%)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync (its output repeats the two pre-existing curated-section errors at `invariants/index.md:24` and `:43`); `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1-U5 recorded (three `missing-version` records; the two curated-section errors), none on a line this unit changed
+- Scan: `tests/test_compaction.py` — scan clean (was 2 issues in 2 functions plus a 451-line file-size finding); `tests/test_compaction_poll.py` — 2 issues in 2 functions (Medium Length 2): `test_poll_kv_cache_updates_global_cache` L:20 N:0 C:2 P:1, `test_poll_kv_cache_uses_session_get` L:17 N:0 C:2 P:1 — the same two functions and metrics the Safety net printed, now under their new module; `tests/test_compaction_ema.py` — scan clean; no file-size finding on any of the three
+- Sizes: tests/test_compaction.py: 171, tests/test_compaction_poll.py: 173, tests/test_compaction_ema.py: 99
+- Findings: none
+- Noticed: the brief's `Verify` count (356) is 9 below the Safety net's 364 only because the two new modules are not in its file list; running them explicitly gives 21 passed, the same 21 `tests/test_compaction.py` had at `HEAD`, and the full suite collects 576
+  Ask: no — the map's U6 row names the new modules as outside the `Verify` selection and directs the explicit run; no test was lost
+- Noticed: the re-pointed `Source:` and `Invalidates-On:` citations keep the pre-split line numbers (`tests/test_compaction_poll.py:183-344`, `tests/test_compaction_ema.py:349-451`) and now point past the ends of the 173- and 99-line files; the map said change the path only, so the ranges were left as written
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: the composition's `Fingerprint:` at `invariants/buster_ripper/assumption-claims.md:3220` still lists `ae79036b7fe714c2… tests/test_compaction.py`, and the `:3225` Invalidates-On keys on that digest for `tests/test_compaction_ema.py`, which is a new file whose bytes differ from it; the map named only the Boundary/Source/Invalidates-On lines, not the Fingerprint, and the sync preview stays `current`
+  Ask: no — a registry digest and prose, nothing reads it at runtime and no user-visible result changes
+- Noticed: the map's poll import list named `pytest`, which no moved poll line uses, so it was left out; the map's EMA list omitted `aiohttp`, which `_TickSeam` and `_drive_ticks` use, so it was added — import lines only, required for the moved text to run
+  Ask: no — no test body or assertion changed
+- Noticed: `tests/test_compaction.py:1`'s module docstring still says "with behavioral session testing" though those tests now live in the poll module; the map named no docstring change and check 4 allows only import lines, so it was left as written
+  Ask: no — a stale docstring, no runtime effect
+- Noticed: `invariants/buster_ripper/assumption-claims.md:433`'s `Actual:` prose still names `test_compaction.py` for the Mock-vs-real-session claim; the file still exists and the statement still holds
+  Ask: no — prose about a surviving file, no runtime effect
