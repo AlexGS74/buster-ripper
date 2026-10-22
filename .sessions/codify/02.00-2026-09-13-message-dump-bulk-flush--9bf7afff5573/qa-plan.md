@@ -74,23 +74,23 @@ behavior is gated above.
 ## Authored Gate Tests
 
 - **QAP-MS002** — authored ([034-forward-qa](iterations/034-forward-qa.md)), **ready** for the MS-002
-  Yield Phase. Tests: `tests/qa/test_qap_ms002.py` (TC-101…TC-112 + R1/R2 hostile tier + R5 identity
+  Yield Phase. Tests: `tests/qa/test_qap_ms002.py` + `tests/qa/test_qap_ms002_hostile.py` + `tests/qa/test_qap_ms002_flush.py` (TC-101…TC-112 + R1/R2 hostile tier + R5 identity
   near-misses), shared harness `tests/qa/harness.py`, instrumented write-count entry
   `tests/qa/counted_proxy_entry.py`. Selected explicitly via
-  `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py -o addopts=` (excluded from the hermetic
+  `.venv/bin/python -m pytest tests/qa/test_qap_ms002.py tests/qa/test_qap_ms002_hostile.py tests/qa/test_qap_ms002_flush.py -o addopts=` (excluded from the hermetic
   default run by `norecursedirs`). The paired M1/M2 comparison numbers for the Yield Phase's
   `G-008`(b) comparison record are in the iteration report §Harness Execution. Yield Phase re-runs and
   writes the authoritative verdicts. [048-forward-qa](iterations/048-forward-qa.md) repairs the
   upstream-response assertions and adds a mandatory live-upstream preflight; the tests remain authored,
   but their current execution is **blocked by upstream reachability**, not passing on a 502 baseline.
 - **QAP-MS004** — authored ([055-forward-qa](iterations/055-forward-qa.md)), **ready** for the MS-004
-  Yield Phase. Tests: `tests/qa/test_qap_ms004.py` (TC-003, TC-113, TC-114 + the R1/R2/R4/R5 tier
+  Yield Phase. Tests: `tests/qa/test_qap_ms004.py` + `tests/qa/test_qap_ms004_adversarial.py` (TC-003, TC-113, TC-114 + the R1/R2/R4/R5 tier
   dispositions), the gate's own loopback self-signed HTTPS peer `tests/qa/tls_peer.py` (committed
   certificate material, `FK-009` option 1), and the instrumented client-posture entry
   `tests/qa/tls_probe_entry.py`. Shares `tests/qa/harness.py`, extended with `upstream=` /
   `require_live_upstream=` / `probe_report=` so this one gate can run on its own peer — the §Upstream
   amendment's harness hook; the live-upstream preflight still fails every other gate closed. Selected
-  explicitly via `.venv/bin/python -m pytest tests/qa/test_qap_ms004.py -o addopts=`. This gate does
+  explicitly via `.venv/bin/python -m pytest tests/qa/test_qap_ms004.py tests/qa/test_qap_ms004_adversarial.py -o addopts=`. This gate does
   **not** require `hyperipper.local:30000` (the gate upstream since the 2026-10-17 correction of `:30001`;
   verified: 6/6 with the remote upstream unroutable), so it is
   not blocked by the reachability condition holding the QAP-MS002 re-run. Yield Phase re-runs and writes
