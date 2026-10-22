@@ -326,3 +326,54 @@
   Ask: no — prose line references only, no runtime or write path
 - Noticed: tests/test_server_hooks.py's two never-awaited-coroutine RuntimeWarnings are unchanged test noise
   Ask: no — test hygiene only, no user-visible wrong result
+
+## U6 Forward
+- Moved: `test_poll_kv_cache_uses_session_get`, `test_poll_kv_cache_handles_metrics_error`, `test_poll_kv_cache_updates_global_cache`, `test_poll_kv_cache_uses_timeout`, `TestPollKvCacheWithSession` -> tests/test_compaction_poll.py (cut and pasted byte-identical, `diff`-verified against `HEAD`'s test_compaction.py:181-344, with their two section headers)
+- Moved: `_TickSeam`, `_kv_answer`, `_settle`, `_drive_ticks`, `test_ema_first_reading_is_raw`, `test_ema_smoothing_reduces_bounces` -> tests/test_compaction_ema.py (cut and pasted byte-identical, `diff`-verified against `HEAD`'s test_compaction.py:347-434, with its section header)
+- Reshaped: nothing
+- Files: tests/test_compaction.py, tests/test_compaction_poll.py (new), tests/test_compaction_ema.py (new), invariants/index.md, invariants/buster_ripper/assumption-claims.md
+- Tests edited: tests/test_compaction.py's import block drops `asyncio`, `contextlib`, `aiohttp`, `pytest`, `compaction` and `config`, keeping `from buster_ripper.compaction import compact_token_count, should_nudge_compact, CompactionConfig` (textually the line that was already at `HEAD:10`); the two new modules get one-line docstrings and their imports — no assertion changed, no test deleted, skipped or weakened
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py -o addopts= -q` -> 21 passed at baseline
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py tests/test_compaction_poll.py -o addopts= -q` -> 21 passed after row 1 (an intermediate rewrite dropped the not-yet-moved EMA block, so 2 failed with `NameError: name 'compaction' is not defined`; the block was restored verbatim from `HEAD`, re-diffed identical and re-run green before row 2)
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py tests/test_compaction_poll.py tests/test_compaction_ema.py -o addopts= -q` -> 21 passed after row 2 and as the final narrow run
+- Ran: brief `Verify` -> 356 passed, 3 pre-existing RuntimeWarnings + 7 passed (U5's 365 minus the 9 moved tests, which `tests/test_compaction.py` no longer collects)
+- Ran: `codify knowledge sync-registry --apply` -> `already-current` (its output repeats the two pre-existing `## Handle Index`/`## Entity Index` curated-section errors at `invariants/index.md:24` and `:43`); `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1-U5 recorded (three `missing-version` records; the two curated-section errors), none on a line this unit changed
+- Scan: `tests/test_compaction.py` — scan clean (was 434 lines with 2 issues in 2 functions: `test_poll_kv_cache_updates_global_cache` L:20, `test_poll_kv_cache_uses_session_get` L:17). `tests/test_compaction_poll.py` — 2 issues in 2 functions (Medium Length 2): `test_poll_kv_cache_updates_global_cache` L:20 N:0 C:2 P:1, `test_poll_kv_cache_uses_session_get` L:17 N:0 C:2 P:1 — the same two functions and metrics the Safety net printed, now under their new module. `tests/test_compaction_ema.py` — scan clean
+- Sizes: tests/test_compaction.py: 171, tests/test_compaction_poll.py: 173, tests/test_compaction_ema.py: 99
+- Noticed: the poll module's two Medium Length issues are the same two the Safety net printed in tests/test_compaction.py, moved with their text; the map's rows end at the split and no later unit reshapes them
+  Ask: no — text-only move, and the map has no further row
+- Noticed: the map's poll import list includes `pytest`, which no moved poll line references, so it was left out; the map's EMA import list omits `aiohttp`, which `_TickSeam` (`aiohttp.ClientError`) and `_drive_ticks` (`spec=aiohttp.ClientSession`) do reference, so it was added — without it the moved code raises `NameError`
+  Ask: no — import lines only, required for the moved text to run
+- Noticed: the three section headers (`# ── poll_kv_cache behavioral tests`, `# ── Session parametric tests`, `# ── EMA smoothing tests`) moved with their blocks so neither module carries an orphaned header
+  Ask: no — comment text only, no test or assertion changed
+- Noticed: the re-pointed `Source:` citations (`tests/test_compaction_poll.py:183-209`, `:212-227`, `:230-258`, `:261-283`, `:288-344`, `tests/test_compaction_ema.py:349-368`, `:371-388`, `:391-394`, `:397-420`, `:423-433`, `:436-451`) and the `:3223`/`:3225` line ranges keep the pre-split numbering; the map said change the path only, so they now point past the ends of the new files (`test_compaction_poll.py` is 173 lines, `test_compaction_ema.py` 99)
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: the composition's `Fingerprint:` at invariants/buster_ripper/assumption-claims.md:3220 still lists `ae79036b7fe714c2… tests/test_compaction.py` as a consulted source, and the `:3225` Invalidates-On keys on that digest; the split changes the file's bytes, so the digest and the source list no longer describe the witness side. The map named only the Boundary/Source/Invalidates-On lines, not the Fingerprint
+  Ask: no — a registry digest and prose, nothing reads it at runtime and no user-visible result changes
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U6 Yield
+- Verdict: ACCEPT
+- Ran: `git status --porcelain` + `git diff -M -C --no-ext-diff` -> only `tests/test_compaction.py`, the new `tests/test_compaction_poll.py` and `tests/test_compaction_ema.py`, `invariants/index.md`, `invariants/buster_ripper/assumption-claims.md` and the brief changed; `tests/test_compaction.py`'s diff is 7 dropped import lines and the removal of the two moved blocks (256 lines), with no other line changed; the invariant diff is exactly the map's five witness lines (`invariants/index.md:303`; `assumption-claims.md:3215` Boundary, `:3219` Source, `:3223` and `:3225` Invalidates-On), and each is path-only (two of them insert a path token where the original relied on the preceding path)
+- Ran: `git show HEAD:tests/test_compaction.py` ranges vs the new modules (`sed -n '181,344p'` vs `tests/test_compaction_poll.py:10-173`, `sed -n '347,434p'` vs `tests/test_compaction_ema.py:12-99`) -> byte-identical (164 and 88 lines, including their three section headers); the new files' only other lines are one module docstring and their imports; the current `tests/test_compaction.py` equals `HEAD` lines 1-2 + 10-178, so the only removed content is the 7 import lines and the two moved blocks (plus the two blank separator lines), and no test or assertion line was lost
+- Ran: test-name compare against `HEAD` -> 21 names at `HEAD`, 21 now (12 in `tests/test_compaction.py`, 7 in `tests/test_compaction_poll.py`, 2 in `tests/test_compaction_ema.py`), identical set; no `skip`/`xfail` anywhere
+- Ran: `.venv/bin/python -m pytest tests/test_compaction.py tests/test_compaction_poll.py tests/test_compaction_ema.py -o addopts= -q` -> 21 passed (the baseline 21)
+- Ran: brief `Verify` -> 356 passed, 3 pre-existing RuntimeWarnings + 7 passed; 356 is the Safety net's 364 minus exactly the 9 moved tests the command no longer selects (the map's U6 "Narrow tests" line says so), and with the two new modules' 21 passed the union is 365, U5's total, so no test disappeared
+- Ran: `uv run pytest` (`Final verify`) -> 576 passed, coverage 96.70% (bound 80%)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync (its output repeats the two pre-existing curated-section errors at `invariants/index.md:24` and `:43`); `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1-U5 recorded (three `missing-version` records; the two curated-section errors), none on a line this unit changed
+- Scan: `tests/test_compaction.py` — scan clean (was 2 issues in 2 functions plus a 451-line file-size finding); `tests/test_compaction_poll.py` — 2 issues in 2 functions (Medium Length 2): `test_poll_kv_cache_updates_global_cache` L:20 N:0 C:2 P:1, `test_poll_kv_cache_uses_session_get` L:17 N:0 C:2 P:1 — the same two functions and metrics the Safety net printed, now under their new module; `tests/test_compaction_ema.py` — scan clean; no file-size finding on any of the three
+- Sizes: tests/test_compaction.py: 171, tests/test_compaction_poll.py: 173, tests/test_compaction_ema.py: 99
+- Findings: none
+- Noticed: the brief's `Verify` count (356) is 9 below the Safety net's 364 only because the two new modules are not in its file list; running them explicitly gives 21 passed, the same 21 `tests/test_compaction.py` had at `HEAD`, and the full suite collects 576
+  Ask: no — the map's U6 row names the new modules as outside the `Verify` selection and directs the explicit run; no test was lost
+- Noticed: the re-pointed `Source:` and `Invalidates-On:` citations keep the pre-split line numbers (`tests/test_compaction_poll.py:183-344`, `tests/test_compaction_ema.py:349-451`) and now point past the ends of the 173- and 99-line files; the map said change the path only, so the ranges were left as written
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: the composition's `Fingerprint:` at `invariants/buster_ripper/assumption-claims.md:3220` still lists `ae79036b7fe714c2… tests/test_compaction.py`, and the `:3225` Invalidates-On keys on that digest for `tests/test_compaction_ema.py`, which is a new file whose bytes differ from it; the map named only the Boundary/Source/Invalidates-On lines, not the Fingerprint, and the sync preview stays `current`
+  Ask: no — a registry digest and prose, nothing reads it at runtime and no user-visible result changes
+- Noticed: the map's poll import list named `pytest`, which no moved poll line uses, so it was left out; the map's EMA list omitted `aiohttp`, which `_TickSeam` and `_drive_ticks` use, so it was added — import lines only, required for the moved text to run
+  Ask: no — no test body or assertion changed
+- Noticed: `tests/test_compaction.py:1`'s module docstring still says "with behavioral session testing" though those tests now live in the poll module; the map named no docstring change and check 4 allows only import lines, so it was left as written
+  Ask: no — a stale docstring, no runtime effect
+- Noticed: `invariants/buster_ripper/assumption-claims.md:433`'s `Actual:` prose still names `test_compaction.py` for the Mock-vs-real-session claim; the file still exists and the statement still holds
+  Ask: no — prose about a surviving file, no runtime effect
