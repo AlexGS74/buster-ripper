@@ -27,7 +27,7 @@ import pytest
 from aiohttp import web
 
 from buster_ripper.routes import chat as chat_routes
-from buster_ripper.routes import messages as messages_routes
+from buster_ripper.routes import stream_relay
 from tests.upstream_stub import StubStream
 
 _MESSAGE_START = (
@@ -136,7 +136,7 @@ class TestWrongShapedMessageStart:
     async def test_the_following_chunk_still_reaches_the_client(self, mocker, raw_proxy,
                                                                 event):
         chunk = b"data: " + json.dumps(event).encode() + b"\n\n"
-        stats = mocker.patch.object(messages_routes, "update_session_stats")
+        stats = mocker.patch.object(stream_relay, "update_session_stats")
         upstream = StubStream(headers=_STREAM_HEADERS, chunks=[chunk, _PLAIN])
         mocker.patch.object(raw_proxy.app["session"], "post", return_value=upstream)
 
@@ -213,7 +213,7 @@ class TestArmShape:
         """Falsifiable only structurally: a build with separate ClientError /
         AttributeError / disconnect arms produces the same wire bytes per case, and
         DC-S11-D8-r1 forbids adding the disconnect-specific arm anyway."""
-        clauses = [line.strip() for line in _source(messages_routes._relay_after_commit).splitlines()
+        clauses = [line.strip() for line in _source(stream_relay._relay_after_commit).splitlines()
                    if line.strip().startswith("except")]
         assert len(clauses) == 1 and clauses[0].startswith("except Exception")
 
@@ -230,7 +230,7 @@ class TestArmShape:
         state = {"done": False, "input_tokens": 0, "sid": "s", "started": 0.0}
 
         with pytest.raises(asyncio.CancelledError):
-            await messages_routes._relay_after_commit(_fake_request(mocker), resp, response, state)
+            await stream_relay._relay_after_commit(_fake_request(mocker), resp, response, state)
 
         response.write_eof.assert_not_awaited()
 
@@ -249,7 +249,7 @@ class TestRelayBehaviour:
     """The halves the split must leave alone."""
 
     async def test_chunks_are_relayed_verbatim_and_usage_recorded(self, mocker, raw_proxy):
-        stats = mocker.patch.object(messages_routes, "update_session_stats")
+        stats = mocker.patch.object(stream_relay, "update_session_stats")
         upstream = StubStream(headers={"Content-Type": "text/event-stream"},
                               chunks=[_MESSAGE_START, _PLAIN])
         mocker.patch.object(raw_proxy.app["session"], "post", return_value=upstream)

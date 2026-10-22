@@ -134,3 +134,37 @@
   Ask: no — later units own them
 - Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
   Ask: no — test hygiene only, no user-visible wrong result
+
+## U1 Forward
+- Moved: `_relay_after_commit`, `_note_message_start` -> buster_ripper/routes/stream_relay.py (cut and pasted byte-identical, AST-compared against `HEAD`; new module: one-line docstring, `time`, `config`, `update_session_stats`, `find_message_start`)
+- Reshaped: nothing
+- Files: buster_ripper/routes/messages.py, buster_ripper/routes/stream_relay.py (new), tests/test_stream_relay_commit.py
+- Tests edited: tests/test_stream_relay_commit.py: import `from buster_ripper.routes import messages as messages_routes` -> `from buster_ripper.routes import stream_relay` (it had no remaining use); patch targets `messages_routes.update_session_stats` at :139 and :252 and `messages_routes._relay_after_commit` at :216 and :233 -> `stream_relay.*` — no assertion changed
+- Ran: `.venv/bin/python -m pytest tests/test_stream_relay_commit.py -o addopts=` -> 16 passed
+- Ran: brief `Verify` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/routes/messages.py` — 17 issues in 5 functions (Deep Nesting 2, High Complexity 1, Long Function 2, Medium Complexity 2, Medium Length 3, Medium Nesting 3, Medium Parameters 4); top: `_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4; no file-size finding (was 318, now 280). `buster_ripper/routes/stream_relay.py` — 2 issues in 2 functions (Medium Length 1, Medium Parameters 1): `_note_message_start` L:16 N:1 C:4 P:3 (Medium Length), `_relay_after_commit` L:9 N:1 C:3 P:4 (Medium Parameters)
+- Sizes: buster_ripper/routes/messages.py: 280, buster_ripper/routes/stream_relay.py: 45
+- Noticed: the two issues the scan prints in stream_relay.py are the same two the moved functions carried at `HEAD` (`_note_message_start` Medium Length, `_relay_after_commit` Medium Parameters) — debt that moved, and no unit row reshapes it
+  Ask: no — text-only move, later rows own the reshapes
+- Noticed: messages.py's 17 remaining function issues are the pre-existing debt U2 reshapes
+  Ask: no — U2 owns them
+- Noticed: tests/test_transport_parity.py:17's module docstring names `_relay_after_commit` without a module path — prose, not an import line or patch target, so left alone
+  Ask: no — a comment cannot change behaviour
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U1 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/routes/messages.py`, the new `buster_ripper/routes/stream_relay.py`, `tests/test_stream_relay_commit.py` and the brief changed; `messages.py`'s diff is one removed import (`find_message_start`, which moved), one added import (`from .stream_relay import _relay_after_commit`) and the two removed definitions, nothing else
+- Ran: `git show HEAD:buster_ripper/routes/messages.py` vs `buster_ripper/routes/stream_relay.py` (byte diff + AST dump of both definitions) -> `_relay_after_commit` and `_note_message_start` byte-identical and AST-identical; the new file's only added lines are its one-line docstring and its imports; `_relay_after_commit`'s sole call site (`messages.py:175`) is unchanged
+- Ran: `git diff -- tests/test_stream_relay_commit.py` -> five changed lines, all module-path updates (the `messages_routes` import and the four `messages_routes.*` references at :139, :216, :233, :252); no assertion, no test body changed
+- Ran: `.venv/bin/python -m pytest tests/test_stream_relay_commit.py -o addopts=` -> 16 passed
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 364 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync; `codify knowledge check --profile strict` -> 5 diagnostics, all pre-existing (`invariants/` is untouched by this unit)
+- Scan: `buster_ripper/routes/messages.py` — 17 issues in 5 functions (Deep Nesting 2, High Complexity 1, Long Function 2, Medium Complexity 2, Medium Length 3, Medium Nesting 3, Medium Parameters 4): `_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4; `buster_ripper/routes/stream_relay.py` — 2 issues in 2 functions (Medium Length 1, Medium Parameters 1): `_note_message_start` L:16 N:1 C:4 P:3, `_relay_after_commit` L:9 N:1 C:3 P:4; no file-size finding on either. Together 19 issues in 7 functions, the same set and metrics as the Safety net — `_relay_after_commit`'s L:9 N:1 C:3 P:4 is unchanged, and nothing is printed that the Safety net did not already print
+- Sizes: buster_ripper/routes/messages.py: 280, buster_ripper/routes/stream_relay.py: 45
+- Findings: none
+- Noticed: `invariants/buster_ripper/assumption-claims.md:2850` names `_relay_after_commit` in the `CO:client-response-to-relay-consumer/payload-and-header-pairing` `Counterexample:` prose with `messages.py:170-197`; that range was already stale at `HEAD` (the function then sat at :196-213) and now names a file it has left, but no `Subject:`/`Source:`/`Invalidates-On:` line names either moved function, the sync preview is `current`, and the check adds no diagnostic
+  Ask: no — documentation prose only, no runtime or write path affected
+- Noticed: `codify knowledge check --profile strict` reports 5 pre-existing diagnostics (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`) — none in a file this unit touched
+  Ask: no — pre-existing registry debt outside this unit's files
