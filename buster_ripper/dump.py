@@ -1,16 +1,9 @@
 """Session-aware prompt dumping.
 
-``documented`` (default): per-turn files — ``turn_000.json`` (full body),
-``turn_{N:03d}.diff`` (unified diff of the rendered bodies) and one summary
-line per turn in ``index.txt``.
-
-``change-focused`` / ``self-contained`` (collapsed): each turn's record is
-buffered in memory and, on flush, appended in arrival order to one artifact
-per session — ``DUMP_DIR/<sid>/<format>.log`` — in a single write. Flushes
-fire on the volume threshold, the timer, and shutdown. Records
-carry the same summary lines as the documented format; change-focused stores
-turn 0's JSON body and rendering then per-turn diffs, while self-contained
-stores every turn's complete rendering (turn 0 also the JSON body).
+``documented`` (default) writes per-turn ``turn_000.json``, ``turn_{N:03d}.diff``
+files and ``index.txt``; ``change-focused``/``self-contained`` buffer each turn's
+record and append one ``DUMP_DIR/<sid>/<format>.log`` per session on the volume,
+timer and shutdown flush triggers. README.md §Dump mode has the formats in full.
 """
 
 import asyncio
@@ -22,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import config
+from .dump_render import _render_body
 from .session import session_id
 
 log = logging.getLogger("buster-ripper")
@@ -46,51 +40,6 @@ class SessionState:
 _sessions: dict[str, SessionState] = {}
 
 
-def _render_tools(tools: list) -> str:
-    """The [tools] section: count, one names line, then the full definitions."""
-    names_line = "# " + ", ".join(t.get("name", "?") for t in tools)
-    defs = json.dumps(tools, indent=2, ensure_ascii=False)
-    return f"[tools] ({len(tools)} total)\n{names_line}\n{defs}"
-
-
-def _system_text(system) -> str:
-    """The system prompt as plain text, whether given as a string or block list."""
-    if isinstance(system, list):
-        return "\n".join(b.get("text", "") for b in system if isinstance(b, dict))
-    return system or ""
-
-
-def _content_text(content) -> str:
-    """A message's content as plain text; dict blocks keep non-text payloads as JSON."""
-    if isinstance(content, list):
-        return "\n".join(
-            b.get("text", json.dumps(b, ensure_ascii=False))
-            if isinstance(b, dict) else str(b)
-            for b in content
-        )
-    return str(content)
-
-
-def _render_body(body: dict) -> str:
-    """Human-readable rendering of a request body for diffing."""
-    parts: list[str] = []
-
-    tools = body.get("tools") or []
-    if tools:
-        parts.append(_render_tools(tools))
-
-    system_text = _system_text(body.get("system", ""))
-    if system_text:
-        parts.append(f"[system]\n{system_text}")
-
-    for i, msg in enumerate(body.get("messages") or []):
-        role = msg.get("role", "?")
-        content_text = _content_text(msg.get("content", ""))
-        parts.append(f"[message {i} / {role}]\n{content_text}")
-
-    return "\n\n" + ("\n\n" + "─" * 80 + "\n\n").join(parts) + "\n"
-
-
 def dump_turn(body: dict) -> None:
     """Record one intercepted turn under the configured dump format."""
     if config.DUMP_DIR is None:
@@ -112,10 +61,8 @@ def dump_turn(body: dict) -> None:
 def flush_all() -> None:
     """Append every session's pending records to its artifact in ONE write.
 
-    Collapsed-path drain: no-op when dumping is off or nothing is pending.
-    Never raises (per-session failures are logged and the batch retained);
-    never touches turn/prev_text.
-    """
+    Collapsed-path drain: no-op when dumping is off or nothing is pending; never
+    raises (failures are logged and the batch retained); turn/prev_text untouched."""
     if config.DUMP_DIR is None:
         return
     for state in _sessions.values():
@@ -125,9 +72,7 @@ def flush_all() -> None:
 async def poll_flush() -> None:
     """Flush pending records every DUMP_FLUSH_INTERVAL seconds.
 
-    Per-iteration failures are logged and the loop continues; cancellation
-    (from on_cleanup) lands at the sleep await.
-    """
+    Failures are logged and the loop continues; cancellation lands at the sleep."""
     while True:
         try:
             flush_all()

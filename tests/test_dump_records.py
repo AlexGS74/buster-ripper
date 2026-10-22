@@ -15,7 +15,8 @@ import re
 import pytest
 
 from buster_ripper import config, dump
-from buster_ripper.dump import _render_body, dump_turn
+from buster_ripper.dump import dump_turn
+from buster_ripper.dump_render import _render_body
 from buster_ripper.session import session_id
 
 COLLAPSED_FORMATS = ["change-focused", "self-contained"]

@@ -14,7 +14,7 @@ import logging
 
 import pytest
 
-from buster_ripper import config, dump
+from buster_ripper import config, dump, dump_render
 from buster_ripper.dump import dump_turn
 from buster_ripper.session import session_id
 
@@ -107,7 +107,7 @@ class TestVolumeTrigger:
         config.DUMP_FLUSH_BYTES = 10 ** 9
         dump_turn(bodies[0])
         config.DUMP_FLUSH_BYTES = (
-            dump._sessions[sid].pending_bytes + len(dump._render_body(bodies[1]))
+            dump._sessions[sid].pending_bytes + len(dump_render._render_body(bodies[1]))
         )
         dump_turn(bodies[1])
 
@@ -118,7 +118,7 @@ class TestVolumeTrigger:
         """A rendered non-ASCII turn flushes before timer/shutdown at byte boundary."""
         config.DUMP_FORMAT = fmt
         body = _body("sys-a", ["é" * 1000])
-        rendered = dump._render_body(body)
+        rendered = dump_render._render_body(body)
         assert len(rendered) < len(rendered.encode("utf-8"))
         config.DUMP_FLUSH_BYTES = len(rendered.encode("utf-8"))
         write = mocker.spy(dump.Path, "open")
@@ -137,7 +137,7 @@ class TestVolumeTrigger:
         """Strictly below encoded-byte threshold, no write occurs."""
         config.DUMP_FORMAT = fmt
         body = _body("sys-a", ["é" * 1000])
-        expected = len(dump._render_body(body).encode("utf-8"))
+        expected = len(dump_render._render_body(body).encode("utf-8"))
         config.DUMP_FLUSH_BYTES = expected + 1
 
         dump_turn(body)
@@ -164,7 +164,7 @@ class TestVolumeTrigger:
         assert state.turn == 0
         assert state.prev_text == ""
         dump_turn(good)
-        expected = len(dump._render_body(good).encode("utf-8"))
+        expected = len(dump_render._render_body(good).encode("utf-8"))
         assert state.turn == 1
         assert state.pending_bytes == expected
         assert len(state.pending) == 1
