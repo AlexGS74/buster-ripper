@@ -255,3 +255,41 @@
   Ask: no — pre-existing registry debt outside this unit's files
 - Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
   Ask: no — test hygiene only, no user-visible wrong result
+
+## U4 Forward
+- Moved: `_render_tools`, `_system_text`, `_content_text`, `_render_body` -> buster_ripper/dump_render.py (cut and pasted byte-identical, `diff`-verified against `HEAD`'s dump.py:42-84; new module: one-line docstring, `import json`)
+- Reshaped: nothing
+- Files: buster_ripper/dump.py, buster_ripper/dump_render.py (new), tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py, invariants/index.md, invariants/buster_ripper/assumption-claims.md
+- Tests edited: tests/test_dump.py:18 and tests/test_dump_records.py:18 `from buster_ripper.dump import _render_body, dump_turn` -> `from buster_ripper.dump import dump_turn` + `from buster_ripper.dump_render import _render_body`; tests/test_dump_triggers.py:17 adds `dump_render` to the `from buster_ripper import ...` line and `dump._render_body` -> `dump_render._render_body` at :110, :121, :140, :167 — no assertion changed
+- Ran: `.venv/bin/python -m pytest tests/test_dump.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py -o addopts=` -> 83 passed (also 83 at baseline)
+- Ran: brief `Verify` -> 365 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/dump.py` — scan clean (was 308 lines with 1 issue in 1 function, `_render_body` L:12 N:1 C:6 P:1; now under the review bound with no issue). `buster_ripper/dump_render.py` — 1 issue in 1 function: `_render_body` L:12 N:1 C:6 P:1 (Medium Complexity)
+- Sizes: buster_ripper/dump.py: 264, buster_ripper/dump_render.py: 48
+- Noticed: dump_render.py's `_render_body` L:12 N:1 C:6 P:1 is the same issue the Safety net printed for dump.py's `_render_body` — debt that moved, and U5 reshapes it
+  Ask: no — U5 owns the reshape
+- Noticed: the two re-pointed claim IDs still read `CL:buster_ripper.dump#_render_body/...` while their `repo:` subject now names `buster_ripper.dump_render`; the map named only the `repo:` token, and the `CL:` id is the claim's stable identity (also used in assumption-claims.md's `Claim:` lines and the generated index)
+  Ask: no — a claim id is a registry identity, not a code path; nothing reads it at runtime
+- Noticed: the re-pointed `Source:` line ranges (`buster_ripper/dump_render.py:49-80` and `:67-80`) no longer match where the moved functions sit (`_render_body` is now :31-48); the map said change the path only, so the ranges were left as written
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: `codify knowledge sync-registry --apply` reports `already-current`; `codify knowledge check --profile strict` reports the same 5 pre-existing diagnostics U1/U2/U3 recorded (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md`)
+  Ask: no — pre-existing registry debt outside this unit's files
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U4 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/dump.py`, the new `buster_ripper/dump_render.py`, `tests/test_dump.py`, `tests/test_dump_records.py`, `tests/test_dump_triggers.py`, `invariants/index.md`, `invariants/buster_ripper/assumption-claims.md` and the brief changed; `dump.py`'s diff is one added import (`from .dump_render import _render_body`) and the four removed definitions, nothing else (`json` and `difflib` stay, both still used at `:122`/`:180` and `:214`); the invariant diff is exactly the listed witness lines, path-only (two `repo:` tokens in index.md, two `Subject:`, two `Source:`, two `Invalidates-On:` in assumption-claims.md); the test diff is three import lines plus the four `dump._render_body` -> `dump_render._render_body` references at `:110`, `:121`, `:140`, `:167`, no assertion changed
+- Ran: `git show HEAD:buster_ripper/dump.py | sed -n '42,84p'` vs `buster_ripper/dump_render.py:6-48` (`diff -u`) -> byte-identical; the new file's only other lines are its one-line docstring and `import json`, and `dump.py`'s sole call (`_render_body` at `:50`) is unchanged
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 365 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync; `codify knowledge check --profile strict` -> the same 5 pre-existing diagnostics U1/U2/U3 recorded (three `missing-version` records; `## Handle Index` and `## Entity Index` curated-section errors in `invariants/index.md:24` and `:43`), none on a line this unit changed
+- Scan: `codify scan path buster_ripper/dump.py buster_ripper/dump_render.py` -> `dump.py` clean (was 1 issue in 1 function, `_render_body` L:12 N:1 C:6 P:1; no file-size finding); `dump_render.py` 1 issue in 1 function: `_render_body` L:12 N:1 C:6 P:1 (Medium Complexity) — the same function and metrics the Safety net printed, now under its new module; nothing new, nothing worse
+- Sizes: buster_ripper/dump.py: 264, buster_ripper/dump_render.py: 48 (`wc -l`; the scan raises no file-size finding for either, so both are under the 300 review bound)
+- Findings: none
+- Noticed: `dump_render.py`'s `_render_body` L:12 N:1 C:6 P:1 is the same issue the Safety net printed for `dump.py`'s `_render_body` — debt that moved; U5 reshapes it
+  Ask: no — U5 owns the reshape
+- Noticed: the two re-pointed claim IDs still read `CL:buster_ripper.dump#_render_body/...` while their `repo:` subject now names `buster_ripper.dump_render`; the map named only the `repo:` token, and the `CL:` id is the claim's stable identity (also used in assumption-claims.md's `Claim:` lines and the generated index)
+  Ask: no — a claim id is a registry identity, not a code path; nothing reads it at runtime
+- Noticed: the re-pointed `Source:` ranges (`buster_ripper/dump_render.py:49-80` and `:67-80`) no longer match where the moved code sits (`_render_body` is at `:31-48`, its message loop at `:43-46`); the map said change the path only, so the ranges were left as written
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: `invariants/buster_ripper/assumption-claims.md:80`'s `dump_turn/turn-diff-record-form` `Actual:` still cites `_render_body(body)` at `dump.py:77`; that call is now `dump.py:50` and the function lives in `dump_render.py`, but its `Subject:` names `dump_turn` (unchanged), the claim's premise still holds, and the sync preview stays `current`
+  Ask: no — stale prose line reference, no runtime or write-path effect

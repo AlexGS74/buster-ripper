@@ -119,13 +119,13 @@ Provenance: session:02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/assum
 
 Claim: CL:buster_ripper.dump#_render_body/section-surface
 Statement: `_render_body` emits only `[tools]`, `[system]` and `[message i / role]` sections — every other top-level request-body key is absent from its output
-Subject: repo:buster_ripper.dump#_render_body
+Subject: repo:buster_ripper.dump_render#_render_body
 Verdict: HOLDS
 Actual: The renderer explicitly reads only `tools`, `system`, and `messages` and constructs sections only for these fields; it does not render other top-level keys as fields. Their names or values can nevertheless appear incidentally inside a tool definition or message text, so “absent” describes field rendering, not a guarantee that arbitrary strings never occur.
-Source: `buster_ripper/dump.py:49-80` (`_render_body`)
+Source: `buster_ripper/dump_render.py:49-80` (`_render_body`)
 Version: unavailable
 Fingerprint: sha256:c8f093c89b61c355ac182feb070cd90b84924ca0d187332117d76b5c766ad9b9
-Invalidates-On: Change to `buster_ripper/dump.py`'s `_render_body` implementation or its input-field handling.
+Invalidates-On: Change to `buster_ripper/dump_render.py`'s `_render_body` implementation or its input-field handling.
 Checked-At: 2026-09-27
 Provenance: session:02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/assumptions/verdicts/claim-9.md
 
@@ -133,13 +133,13 @@ Provenance: session:02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/assum
 
 Claim: CL:buster_ripper.dump#_render_body/message-section-mapping
 Statement: `_render_body`'s output carries the request's conversation as one `[message i / role]` section per message
-Subject: repo:buster_ripper.dump#_render_body
+Subject: repo:buster_ripper.dump_render#_render_body
 Verdict: HOLDS
 Actual: It enumerates `body.get("messages") or []` and appends exactly one `[message {i} / {role}]` section for each message, rendering its content as text. The separate `system` field is rendered in `[system]`, not as a message section; structured content may lose its original representation.
-Source: `buster_ripper/dump.py:67-80` (`_render_body`)
+Source: `buster_ripper/dump_render.py:67-80` (`_render_body`)
 Version: unavailable
 Fingerprint: sha256:c8f093c89b61c355ac182feb070cd90b84924ca0d187332117d76b5c766ad9b9
-Invalidates-On: Change to `buster_ripper/dump.py`'s `_render_body` message loop or its input-field handling.
+Invalidates-On: Change to `buster_ripper/dump_render.py`'s `_render_body` message loop or its input-field handling.
 Checked-At: 2026-09-27
 Provenance: session:02.00-2026-09-13-message-dump-bulk-flush--9bf7afff5573/assumptions/verdicts/claim-10.md
 
