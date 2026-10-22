@@ -293,3 +293,36 @@
   Ask: no — prose line references only, no runtime or write path
 - Noticed: `invariants/buster_ripper/assumption-claims.md:80`'s `dump_turn/turn-diff-record-form` `Actual:` still cites `_render_body(body)` at `dump.py:77`; that call is now `dump.py:50` and the function lives in `dump_render.py`, but its `Subject:` names `dump_turn` (unchanged), the claim's premise still holds, and the sync preview stays `current`
   Ask: no — stale prose line reference, no runtime or write-path effect
+
+## U5 Forward
+- Moved: nothing
+- Reshaped: `_render_body`: the per-message role read, the content text and the `[message i / role]` section moved verbatim to `_render_message(index, msg)` — same three lines, the map's `i` renamed to `index` in the signature and the f-string only; the loop keeps its `enumerate` and appends the helper's result
+- Files: buster_ripper/dump_render.py
+- Tests edited: none
+- Ran: `.venv/bin/python -m pytest tests/test_dump.py tests/test_dump_records.py tests/test_dump_triggers.py -o addopts=` -> 73 passed at baseline and after the row
+- Ran: brief `Verify` -> 365 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Ran: `codify knowledge sync-registry` (preview) -> `current`, no pending sync (its output repeats the two pre-existing `## Handle Index`/`## Entity Index` curated-section errors at `invariants/index.md:24` and `:43`)
+- Scan: `buster_ripper/dump_render.py` — 1 issue in 1 function: `_render_body` L:10 N:1 C:6 P:1 (Medium Complexity); `_render_message` clean; no file-size finding
+- Sizes: buster_ripper/dump_render.py: 53
+- Noticed: `_render_body`'s Medium Complexity holds at C:6 (L:12 -> L:10) — the three `or` defaults and the two section `if`s stay in the function, and the map's row ends at this extraction
+  Ask: no — the row was followed as written and no later unit reshapes it
+- Noticed: U4's stale `Source:` ranges in `invariants/buster_ripper/assumption-claims.md` (`dump_render.py:49-80` and `:67-80`) now sit 5 lines further off after the insertion at `:31`; this unit names no witness to re-point and the sync preview stays `current`
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U5 Yield
+- Verdict: ACCEPT
+- Ran: `git status --porcelain` + `git diff -M -C --no-ext-diff` -> only `buster_ripper/dump_render.py` and the brief changed; the file's 11 added and 3 removed lines are the helper definition and the loop's replaced append, nothing else (no import, docstring or other production line touched)
+- Ran: `git show HEAD:buster_ripper/dump_render.py` vs the working tree -> the three removed lines (`role = ...`, `content_text = ...`, `parts.append(f"[message {i} / {role}]\n{content_text}")`) reappear verbatim as `_render_message`'s body dedented, with `parts.append(` -> `return ` and `{i}` -> `{index}`, and the call site passes `i` as `index`; `_render_body`'s signature `(body: dict) -> str` is unchanged, its callers (`dump.py:50`, tests/test_dump.py, tests/test_dump_records.py, tests/test_dump_triggers.py) are unchanged, and tests/test_dump.py:145 calls it directly
+- Ran: `python -` (old vs new `_render_body` over six bodies: empty, no messages, single user, multi-message with block content, tools+system+missing-role/None content, empty-tools) -> identical output on every one
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 365 passed, 2 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped; the +1 is U3's map-named characterization test)
+- Scan: `codify scan path buster_ripper/dump_render.py` -> 1 issue in 1 function: `_render_body` L:10 N:1 C:6 P:1 (Medium Complexity); `_render_message` is clean and not printed; no file-size finding. The Safety net's `_render_body` (L:12 N:1 C:6 P:1) is the same function, shorter by two lines, and nothing new is printed
+- Sizes: buster_ripper/dump_render.py: 53
+- Findings: none
+- Noticed: `_render_body`'s Medium Complexity holds at C:6 (L:12 -> L:10) — the three `or` defaults and the two section `if`s stay in the function; the map's row ends at this extraction and no later unit reshapes it
+  Ask: no — the row was followed as written
+- Noticed: U4's `Source:` ranges in `invariants/buster_ripper/assumption-claims.md` (`dump_render.py:49-80` and `:67-80`) now sit further off after the insertion at `:31` (`_render_body` is at `:38-53`); this unit re-points no witness, the `Subject:` paths are unchanged, and the Forward's sync preview is `current`
+  Ask: no — prose line references only, no runtime or write path
+- Noticed: tests/test_server_hooks.py's two never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result

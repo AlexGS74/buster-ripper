@@ -28,6 +28,13 @@ def _content_text(content) -> str:
     return str(content)
 
 
+def _render_message(index: int, msg: dict) -> str:
+    """One message section: the [message i / role] header and its content text."""
+    role = msg.get("role", "?")
+    content_text = _content_text(msg.get("content", ""))
+    return f"[message {index} / {role}]\n{content_text}"
+
+
 def _render_body(body: dict) -> str:
     """Human-readable rendering of a request body for diffing."""
     parts: list[str] = []
@@ -41,8 +48,6 @@ def _render_body(body: dict) -> str:
         parts.append(f"[system]\n{system_text}")
 
     for i, msg in enumerate(body.get("messages") or []):
-        role = msg.get("role", "?")
-        content_text = _content_text(msg.get("content", ""))
-        parts.append(f"[message {i} / {role}]\n{content_text}")
+        parts.append(_render_message(i, msg))
 
     return "\n\n" + ("\n\n" + "─" * 80 + "\n\n").join(parts) + "\n"
