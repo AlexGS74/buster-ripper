@@ -10,6 +10,7 @@ eval transform's ``chat_template_kwargs`` guard is the same replacement on the c
 import pytest
 
 from buster_ripper import backend, config
+from buster_ripper.routes.chat import _transform_eval_response
 from tests.relay_bodies import _CHAT, _MESSAGES, _sent_body
 from tests.upstream_stub import StubUpstream
 
@@ -55,6 +56,26 @@ class TestEvalChatTemplateKwargsGuard:
         sent = _sent_body(post.call_args)
         assert sent["chat_template_kwargs"] == {
             "thinking_budget": 64, "enable_thinking": True}
+
+
+class TestEvalResponseTransforms:
+    """The eval transform chain's arms, pinned at the function boundary."""
+
+    def test_eval_response_transforms_today(self):
+        """``(content, fixed)`` per enabled step, and the fixed flag carried through."""
+        profile = config.PROFILES["glm47"]
+
+        msg = {"content": "<think>reason</think>answer"}
+        assert _transform_eval_response(msg, msg["content"], profile, False) == ("answer", True)
+
+        msg = {"content": "", "reasoning_content": "reason"}
+        assert _transform_eval_response(msg, msg["content"], profile, False) == ("reason", True)
+
+        msg = {"content": "```python\nx = 1\n```"}
+        assert _transform_eval_response(msg, msg["content"], profile, False) == ("x = 1", True)
+
+        assert _transform_eval_response({"content": "plain"}, "plain", profile, False) == ("plain", False)
+        assert _transform_eval_response({"content": "plain"}, "plain", profile, True) == ("plain", True)
 
 
 class TestPreservedThinkingGuard:

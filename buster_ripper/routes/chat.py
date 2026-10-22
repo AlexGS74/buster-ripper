@@ -40,19 +40,21 @@ async def handle_chat(request: web.Request) -> web.Response:
     body = _apply_request_transforms(body, profile)
 
     headers = _prepare_headers(request.headers)
-    session = request.app["session"]
+    return await _chat_with_overflow_retry(request, body, headers, profile)
 
+
+async def _chat_with_overflow_retry(request, body, headers, profile) -> web.Response:
     backend_type = backend.get_backend_state()
 
     if backend_type != "sglang":
-        return await _make_chat_request(request, body, headers, session, profile)
+        return await _make_chat_request(request, body, headers, profile)
 
     max_retries = 2
     current_body = dict(body)
 
     for attempt in range(max_retries + 1):
         try:
-            return await _make_chat_request(request, current_body, headers, session, profile)
+            return await _make_chat_request(request, current_body, headers, profile)
         except ContextOverflowError as e:
             if attempt == max_retries:
                 return web.json_response(
@@ -66,7 +68,7 @@ async def handle_chat(request: web.Request) -> web.Response:
                      attempt + 1, max_retries, new_max)
 
     # Unreachable but needed for type checker
-    return await _make_chat_request(request, current_body, headers, session, profile)
+    return await _make_chat_request(request, current_body, headers, profile)
 
 
 def _chat_template_kwargs(body: dict) -> dict:
@@ -88,20 +90,24 @@ def _apply_request_transforms(body: dict, profile) -> dict:
             body.setdefault("max_tokens", config.EVAL_MAX_TOKENS)
 
         if profile.inject_chat_template_kwargs:
-            kwargs = _chat_template_kwargs(body)
-            kwargs.setdefault("enable_thinking", config.EVAL_THINKING)
-            if config.EVAL_THINKING_BUDGET > 0:
-                kwargs.setdefault("thinking_budget", config.EVAL_THINKING_BUDGET)
-            if config.VERBOSE:
-                log.info(
-                    "eval-mode: injected chat_template_kwargs enable_thinking=%s thinking_budget=%s",
-                    config.EVAL_THINKING,
-                    config.EVAL_THINKING_BUDGET if config.EVAL_THINKING_BUDGET > 0 else "unlimited",
-                )
+            _inject_eval_kwargs(body)
     except Exception:
         pass
 
     return body
+
+
+def _inject_eval_kwargs(body: dict) -> None:
+    kwargs = _chat_template_kwargs(body)
+    kwargs.setdefault("enable_thinking", config.EVAL_THINKING)
+    if config.EVAL_THINKING_BUDGET > 0:
+        kwargs.setdefault("thinking_budget", config.EVAL_THINKING_BUDGET)
+    if config.VERBOSE:
+        log.info(
+            "eval-mode: injected chat_template_kwargs enable_thinking=%s thinking_budget=%s",
+            config.EVAL_THINKING,
+            config.EVAL_THINKING_BUDGET if config.EVAL_THINKING_BUDGET > 0 else "unlimited",
+        )
 
 
 def _prepare_headers(request_headers) -> dict:
@@ -140,10 +146,11 @@ def _chat_payload(body: dict, raw: bytes, headers: dict) -> tuple:
 
 
 async def _make_chat_request(
-    request: web.Request, body: dict, headers: dict, session, profile,
+    request: web.Request, body: dict, headers: dict, profile,
 ) -> web.Response:
     timeout = aiohttp.ClientTimeout(total=None if body.get("stream") else 300)
     payload, headers = _chat_payload(body, await request.read(), headers)
+    session = request.app["session"]
 
     try:
         async with session.post(
@@ -237,13 +244,13 @@ def _strip_think_block(msg: dict, content: str) -> tuple[str, bool]:
     return answer, True
 
 
-def _copy_reasoning_to_content(msg: dict) -> tuple[str, bool]:
+def _copy_reasoning_to_content(msg: dict, content: str) -> tuple[str, bool]:
     if msg.get("content"):
-        return "", False
+        return content, False
 
     thinking = msg.get("reasoning_content") or msg.get("reasoning") or ""
     if not thinking:
-        return "", False
+        return content, False
 
     msg["content"] = thinking
     if config.VERBOSE:
@@ -265,23 +272,15 @@ def _strip_code_fence(msg: dict, content: str) -> tuple[str, bool]:
 
 
 def _transform_eval_response(msg: dict, content: str, profile, fixed: bool) -> tuple:
-    new_content, changed = _strip_think_block(msg, content)
-    if changed:
-        content = new_content
-        fixed = True
-
+    steps = [_strip_think_block]
     if profile.copy_reasoning_to_content:
-        new_content, changed = _copy_reasoning_to_content(msg)
-        if changed:
-            content = new_content
-            fixed = True
-
+        steps.append(_copy_reasoning_to_content)
     if profile.strip_code_fences:
-        new_content, changed = _strip_code_fence(msg, msg.get("content") or "")
-        if changed:
-            content = new_content
-            fixed = True
+        steps.append(_strip_code_fence)
 
+    for step in steps:
+        content, changed = step(msg, content)
+        fixed = fixed or changed
     return content, fixed
 
 
