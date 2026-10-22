@@ -32,9 +32,8 @@ async def handle_messages(request: web.Request) -> web.StreamResponse:
         # lacks (web_request.py:689 hands the charset to bytes.decode()).
         return web.json_response({"error": "Invalid JSON"}, status=400)
 
-    # Normalize FIRST to strip billing nonce, THEN compute session_id.
-    # This ensures session_id is stable (billing nonce changes every request).
-    # Images handled separately after session_id is known.
+    # Normalize FIRST to strip billing nonce, THEN compute session_id: the nonce
+    # changes every request, so the id is only stable after the strip.
     body, changes = normalize(body, session_id="")
     sid = session_id(body)
 
@@ -85,11 +84,9 @@ def _inject_preserved_thinking(body: dict) -> None:
 async def handle_streaming(
     request: web.Request, body: dict, headers: dict, sid: str
 ) -> web.StreamResponse:
-    """Handle streaming response for /v1/messages with context overflow retry.
+    """Handle streaming for /v1/messages with context overflow retry.
 
-    Only retries on SGLang backends. vLLM and unknown backends skip retry logic.
-    Detects overflow from actual streaming response (no duplicate requests).
-    """
+    Retries on SGLang only, detecting overflow from the actual response."""
     backend_type = backend.get_backend_state()
 
     # Non-SGLang backends: no retry
@@ -141,17 +138,14 @@ async def _stream_single_request(
 
     try:
         # No deadline on the relay: base's stream path ran without one
-        # (buster_ripper_legacy.py:664). A request-local ClientTimeout replaces the
-        # session's rather than merging into it, so this call arms nothing at all —
-        # a spelling that re-inherited the session's total would truncate a long
-        # stream in silence.
+        # (buster_ripper_legacy.py:664), and a request-local ClientTimeout
+        # replaces the session's rather than merging into it.
         async with session.post(
             f"{config.UPSTREAM}/v1/messages", headers=headers,
             data=_request_payload(body, await request.read(), headers),
             timeout=aiohttp.ClientTimeout(total=None), allow_redirects=False,
         ) as resp:
-            # A redirect is the upstream's answer, not a stream to relay: httpx
-            # followed none, so neither do we.
+            # A redirect is the upstream's answer, not a stream to relay.
             if 300 <= resp.status < 400:
                 return web.Response(
                     body=await resp.read(),
@@ -187,12 +181,9 @@ async def _stream_single_request(
 
 
 def _request_payload(body: dict, raw: bytes, headers: dict) -> bytes:
-    """The client's own bytes unless normalization changed the body.
-
-    A changed body is re-encoded and relabelled, because ``forward_headers`` kept
-    the client's ``Content-Type`` and aiohttp copies a payload's own header only
-    when the name is absent.
-    """
+    """The client's own bytes unless normalization changed the body; a changed body is
+    re-encoded and relabelled, because aiohttp takes a payload's own Content-Type only
+    when the header is absent."""
     try:
         if json.loads(raw) == body:
             return raw
@@ -205,29 +196,16 @@ def _request_payload(body: dict, raw: bytes, headers: dict) -> bytes:
 async def _relay_after_commit(request, resp, response, state) -> None:
     """Relay the upstream body into a response whose head is already committed.
 
-    prepare() flushed the status line, so a failure here cannot be answered with
-    another response object: it would be prepared onto the same request writer and
-    land a second head inside the first body. This arm therefore logs and returns,
-    and the caller hands the *committed* object back, so StreamResponse.prepare()
-    short-circuits on its own writer and finish_response()'s write_eof() ends the
-    stream — one head, one terminal.
-
-    It catches Exception, not ClientError, because the class of post-commit failure
-    is wider than the upstream: a shape this relay did not anticipate raises
-    AttributeError, an armed ClientTimeout.total raises a bare asyncio.TimeoutError
-    (which is not a ClientError, unlike the sock_* ones) though this call now arms
-    no deadline at all, and a client that left raises out of write().
-    asyncio.CancelledError is a BaseException, so a disconnect or shutdown still
-    propagates untouched.
-    """
+    A failure cannot be answered with another response — a second head would land in
+    the first body — so it logs and returns; catches Exception, not ClientError, while
+    CancelledError (a BaseException) still propagates."""
     try:
         async for chunk in resp.content.iter_any():
             _note_message_start(request, chunk, state)
             await response.write(chunk)
         await response.write_eof()
     except Exception as exc:
-        # Position, never cause: one arm covers upstream, timeout and downstream
-        # losses, so it cannot claim which of them this was.
+        # Position, never cause: one arm covers upstream, timeout and downstream loss.
         request.app["log"].error(
             "Post-commit relay error (%s): %s", type(exc).__name__, exc
         )
@@ -313,8 +291,7 @@ async def _non_stream_single_request(
             # Check for context overflow error
             if resp.status >= 400:
                 # Lenient: the body is relayed as bytes regardless, and the ASCII
-                # overflow text survives replacement — undecodable bytes must not
-                # raise out of the probe.
+                # overflow text survives replacement.
                 overflow_err = parse_context_overflow_error(content.decode(errors="replace"))
                 if overflow_err:
                     # Use parsed tokens if available, otherwise use extracted

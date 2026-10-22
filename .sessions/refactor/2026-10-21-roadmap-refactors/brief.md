@@ -103,3 +103,34 @@
 - Witnesses to re-point: invariants/index.md:303 (the `CO:` producer parenthetical), invariants/buster_ripper/assumption-claims.md:3215 (Boundary), :3219 (Source; the poll citations split to tests/test_compaction_poll.py and the drift citations to tests/test_compaction_ema.py), :3223 and :3225 (Invalidates-On) -> tests/test_compaction_ema.py
 - Tests with import lines or patch targets to update: tests/test_compaction.py's import block (drops `asyncio`, `contextlib`, `aiohttp`, `pytest` and `config`; keeps `compact_token_count` and `should_nudge_compact`)
 - Narrow tests: tests/test_compaction.py, tests/test_compaction_poll.py, tests/test_compaction_ema.py (the two new modules are not selected by the brief's Verify command — run them explicitly)
+
+## U0 Forward
+- Moved: nothing
+- Reshaped: nothing
+- Files: buster_ripper/routes/messages.py, buster_ripper/dump.py, tests/test_compaction.py
+- Tests edited: none
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_stream_relay_commit.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_dump.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_compaction.py -o addopts=` -> 144 passed (after each row; 50, 73 and 21 passed for rows 1-3)
+- Ran: brief `Verify` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed
+- Scan: `buster_ripper/routes/messages.py` — 318 lines (review: <=300), 30 trimmable full-line comments, 19 issues in 7 functions; top: `_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4. `buster_ripper/dump.py` — 308 lines (review: <=300), 5 trimmable full-line comments, 1 issue in 1 function: `_render_body` L:12 N:1 C:6 P:1
+- Sizes: buster_ripper/routes/messages.py: 318, buster_ripper/dump.py: 308, tests/test_compaction.py: 434
+- Noticed: messages.py's 19 function-level issues are unchanged pre-existing debt — the unit's U2 rows reshape them
+  Ask: no — U2 reshapes them
+- Noticed: dump.py's `_render_body` Medium Complexity is pre-existing — the unit's U5 row reshapes it
+  Ask: no — U5 reshapes it
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result
+
+## U0 Yield
+- Verdict: ACCEPT
+- Ran: `git status` + `git diff -M -C` -> only `buster_ripper/routes/messages.py`, `buster_ripper/dump.py`, `tests/test_compaction.py` and the brief are changed; every changed line in the three code files is a comment, docstring line or blank line
+- Ran: `python -` (AST compare, docstrings stripped, working tree vs `HEAD`) for the three files -> identical AST for all three; every docstring that existed at `HEAD` still exists
+- Ran: `.venv/bin/python -m pytest tests/test_messages_routes.py tests/test_chat_routes.py tests/test_messages_request_bytes.py tests/test_chat_request_bytes.py tests/test_stream_relay_commit.py tests/test_header_parity.py tests/test_context_overflow.py tests/test_context_overflow_retry.py tests/test_upstream_answer_relay.py tests/test_upstream_error_relay.py tests/test_transport_parity.py tests/test_preserved_thinking.py tests/test_proxy_errors.py tests/test_image.py tests/test_dump.py tests/test_dump_flush.py tests/test_dump_records.py tests/test_dump_triggers.py tests/test_dump_write_count.py tests/test_server_hooks.py tests/test_compaction.py -o addopts= && .venv/bin/python -m pytest tests/qa/test_qap_ms001.py tests/qa/test_qap_ms002.py -o addopts=` -> 364 passed, 3 pre-existing RuntimeWarnings + 7 passed (Safety net: 364 + 7, 0 skipped)
+- Scan: `buster_ripper/routes/messages.py` — 318 lines, 19 issues in 7 functions, same functions and metrics as the Safety net (`_stream_single_request` L:35 N:2 C:4 P:4, `_non_stream_single_request` L:34 N:4 C:8 P:4, `handle_messages` L:28 N:2 C:12 P:1, `handle_streaming` L:25 N:3 C:8 P:4, `handle_non_streaming` L:21 N:2 C:5 P:4); `buster_ripper/dump.py` — 308 lines, 1 issue in 1 function `_render_body` L:12 N:1 C:6 P:1; `tests/test_compaction.py` — 434 lines, 2 issues in 2 functions `test_poll_kv_cache_updates_global_cache` L:20 and `test_poll_kv_cache_uses_session_get` L:17. Nothing new, nothing worse
+- Sizes: buster_ripper/routes/messages.py: 318, buster_ripper/dump.py: 308, tests/test_compaction.py: 434
+- Findings: none
+- Noticed: tests/test_compaction.py ends at 434, 4 lines over the map's ~430 estimate (its `_TickSeam`/`_kv_answer` shrink targets were 7->3 and 10->4, delivered as 4 and 5, and row 1's token-fallback comment was already one line at `HEAD`); all three files stay over 300, so the split units are unaffected
+  Ask: no — the estimate was approximate and no unit is dropped
+- Noticed: messages.py's 19 function-level issues and dump.py's `_render_body` Medium Complexity are unchanged pre-existing debt — the unit's U2/U5 rows reshape them
+  Ask: no — later units own them
+- Noticed: tests/test_server_hooks.py's three never-awaited-coroutine RuntimeWarnings are unchanged test noise
+  Ask: no — test hygiene only, no user-visible wrong result

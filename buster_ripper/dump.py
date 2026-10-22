@@ -1,16 +1,9 @@
 """Session-aware prompt dumping.
 
-``documented`` (default): per-turn files — ``turn_000.json`` (full body),
-``turn_{N:03d}.diff`` (unified diff of the rendered bodies) and one summary
-line per turn in ``index.txt``.
-
-``change-focused`` / ``self-contained`` (collapsed): each turn's record is
-buffered in memory and, on flush, appended in arrival order to one artifact
-per session — ``DUMP_DIR/<sid>/<format>.log`` — in a single write. Flushes
-fire on the volume threshold, the timer, and shutdown. Records
-carry the same summary lines as the documented format; change-focused stores
-turn 0's JSON body and rendering then per-turn diffs, while self-contained
-stores every turn's complete rendering (turn 0 also the JSON body).
+``documented`` (default) writes per-turn ``turn_000.json``, ``turn_{N:03d}.diff``
+files and ``index.txt``; ``change-focused``/``self-contained`` buffer each turn's
+record and append one ``DUMP_DIR/<sid>/<format>.log`` per session on the volume,
+timer and shutdown flush triggers. README.md §Dump mode has the formats in full.
 """
 
 import asyncio
@@ -112,10 +105,8 @@ def dump_turn(body: dict) -> None:
 def flush_all() -> None:
     """Append every session's pending records to its artifact in ONE write.
 
-    Collapsed-path drain: no-op when dumping is off or nothing is pending.
-    Never raises (per-session failures are logged and the batch retained);
-    never touches turn/prev_text.
-    """
+    Collapsed-path drain: no-op when dumping is off or nothing is pending; never
+    raises (failures are logged and the batch retained); turn/prev_text untouched."""
     if config.DUMP_DIR is None:
         return
     for state in _sessions.values():
@@ -125,9 +116,7 @@ def flush_all() -> None:
 async def poll_flush() -> None:
     """Flush pending records every DUMP_FLUSH_INTERVAL seconds.
 
-    Per-iteration failures are logged and the loop continues; cancellation
-    (from on_cleanup) lands at the sleep await.
-    """
+    Failures are logged and the loop continues; cancellation lands at the sleep."""
     while True:
         try:
             flush_all()

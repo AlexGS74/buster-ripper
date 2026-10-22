@@ -347,13 +347,10 @@ class TestPollKvCacheWithSession:
 # ── EMA smoothing tests ───────────────────────────────────────────────────────
 
 class _TickSeam:
-    """``session.get`` stand-in that hands out one ``/metrics`` answer per tick.
+    """``session.get`` stand-in handing out one ``/metrics`` answer per tick.
 
-    The value the loop computed is read at the tick boundary, not after the run: the
-    call happens even when ``async with`` bound a discarded child (``claim-409``), so a
-    witness built on this seam fails on a *value* rather than staying green on a call
-    count. One answer object per tick is what makes the awaited ``text()`` countable.
-    """
+    The value is read at the tick boundary, not after the run, so a witness fails on
+    a *value*; one answer per tick makes the awaited ``text()`` countable."""
 
     def __init__(self, answers):
         self.answers = list(answers)
@@ -369,16 +366,11 @@ class _TickSeam:
 
 
 def _kv_answer(mocker, raw: float):
-    """A 200 ``/metrics`` body, enterable with ``async with``, reporting one usage reading.
+    """A 200 ``/metrics`` body, enterable with ``async with``, reporting one reading.
 
-    This module's own sibling idiom, and the only permitted shape here: an ``AsyncMock``
-    response with ``__aenter__``/``__aexit__`` bound back to itself, returned by a plain
-    ``Mock`` on a spec'd session. A bare ``Mock()``/``NonCallableMock()`` cannot be
-    entered, a spec'd response double prunes the dunders, and an unconfigured
-    ``MagicMock`` silently discards everything configured on it — each of those fails
-    inside ``compaction.py:55-56``'s swallow, leaving a witness green with ``:49`` never
-    executed.
-    """
+    Only this shape works: an ``AsyncMock`` whose ``__aenter__``/``__aexit__`` bind
+    back to itself, from a plain ``Mock`` on a spec'd session — a bare ``Mock`` cannot
+    be entered, a spec'd response prunes the dunders, a ``MagicMock`` discards them."""
     resp = mocker.AsyncMock()
     resp.status = 200
     resp.text = mocker.AsyncMock(
@@ -397,13 +389,9 @@ async def _settle(task) -> None:
 async def _drive_ticks(mocker, readings):
     """Run production's ``poll_kv_cache`` for one tick per reading.
 
-    Returns the value after each tick and the per-tick answers. The interval the loop
-    sleeps on is its own (``config.KV_POLL_INTERVAL``, read per iteration at ``:57``):
-    it is set to 0 for the task's duration and restored with the global the loop writes,
-    because ``asyncio.sleep(0)`` only guarantees another *ready* task runs — a witness is
-    entitled to a second iteration by shortening the interval, never by treating a yield
-    as a clock. A timeout here means the loop never reached its next tick at all.
-    """
+    Returns the value after each tick and the per-tick answers; the loop's interval is
+    set to 0 for the task's duration and restored afterwards, because
+    ``asyncio.sleep(0)`` only guarantees another *ready* task runs."""
     answers = [_kv_answer(mocker, raw) for raw in readings]
     seam = _TickSeam(answers)
     untouched, interval = compaction._kv_cache_usage, config.KV_POLL_INTERVAL
@@ -421,12 +409,9 @@ async def _drive_ticks(mocker, readings):
 
 
 async def test_ema_first_reading_is_raw(mocker):
-    """The name's promise, through the loop: the first reading lands raw.
+    """The name's promise, through the loop: the first reading lands raw, not inline.
 
-    Before this pair ran ``poll_kv_cache`` at all — they computed the formula inline and
-    asserted on their own arithmetic, so ``compaction.py:49`` stayed a missing line and
-    the module globals never moved.
-    """
+    Before this pair ran ``poll_kv_cache`` at all, so ``compaction.py:49`` stayed missing."""
     values, answers = await _drive_ticks(mocker, [0.85])
 
     assert values == [0.85], f"tick 1 did not produce the raw reading: {values!r}"
@@ -436,11 +421,9 @@ async def test_ema_first_reading_is_raw(mocker):
 async def test_ema_smoothing_reduces_bounces(mocker):
     """Three distinct raw readings, and the blend is production's, not the test's.
 
-    The expectations are literals for α = 0.3: an assertion that re-runs
-    ``(1 - α) * prev + α * raw`` in the source's operand order cannot fail when the two
-    weights are swapped, which is the mutation this witness exists to catch. The bouncy
-    sequence is the one the docstring at ``compaction.py:25-27`` describes.
-    """
+    The expectations are literals for α = 0.3: re-running the formula in the source's
+    operand order cannot fail when the two weights are swapped — the mutation this
+    witness exists to catch."""
     readings = [0.75, 0.0, 0.23]
     values, answers = await _drive_ticks(mocker, readings)
 
